@@ -42,7 +42,6 @@ class Plp(object):
             'X3': [{'parameter': 0.8, 'body': {'X1': 1, 'X2': 0}},
                    {'parameter': 0.9, 'body': {'X1': 0}}]}
 
-
         Also, another dict called self.parents is created. It stores for each
         head a set of its parents. In our example, we would have:
         
@@ -163,6 +162,19 @@ class Plp(object):
                 
         
     def _head_log_likelihood(self, parameters, head, sign=+1.0):
+        """Returns the expected-value of the log-likelihood of a head variable
+        given its parents, for all possible configurations the examples of a
+        dataset can take. In other words, it is the function that the M step
+        tries to maximize in the EM cycle. It is implict that the model and the
+        dataset are given, and that the appropriated calculations in
+        self.configs_tables[head] were made.
+
+        Keyword arguments:
+        parameters -- the parameters for the set of rules which head is head
+        head -- the variable that is head of the rules
+        sign -- sign of the output. Default is 1.0, use -1.0 for
+                minus-log-likelihood
+        """
         # parameters are only of rules which head is head
         rules = list(self.model[head]) # make a copy of rules list
         for i, rule in enumerate(rules):
@@ -203,10 +215,13 @@ class Plp(object):
         Pandas DataFrame that represents the configurations table for that head.
 
         Columns of each dataframe are:
-        head variable
-        body variable(s)
-        count -- expected number of times the configuration is observed
+        head variable -- value the head variable takes for the configuration
+        body variable(s) -- value the parents of head take for the config
+        count -- expected number of times the configuration is observed, given
+                 a model and dataset. It should be updated each time the
+                 learning algorithms passes throught the E-step
         likelihood -- the likelihood of the head given parents in that config
+        active_rules -- the rule's indexes that are active for that config
         """
         self.configs_tables = {}
         for head in self.model:
@@ -246,6 +261,7 @@ class Plp(object):
         Keyword arguments:
         query -- a Panda Series containing queried values
         evidence -- a Panda Series containing observed values
+        model -- a model (structure + parameters) to replace self.model
 
         For both query and evidence arguments the indexes of the Pandas Series
         should be the variable names. Values different from 0 or 1 will be
