@@ -2,15 +2,15 @@ import math
 import numpy as np
 import pandas as pd
 import itertools
-from functools import partial
 from scipy.optimize import basinhopping, minimize
 from problog.program import PrologString
 from problog import get_evaluatable
+from problog.errors import InconsistentEvidenceError
 
-class plp(object):
+class Plp(object):
 
     def __init__(self):
-        print('hello, I\'m a plp bro.')
+        print('')
 
         
     def read_structure(self, filepath):
@@ -24,8 +24,8 @@ class plp(object):
         Each rule in the rules list corresponds to a dict with the following
         key-value pairs:
         parameter -- the parameter of the rule;
-        body -- a dict where each key is a variable and its value is True if
-                the variable is non-negated or False if it is negated.
+        body -- a dict where each key is a variable and its value is 1 if the
+                variable is non-negated or 0 if it is negated.
 
         An example: for the set of rules
 
@@ -113,14 +113,23 @@ class plp(object):
             for head in self.model:
                 # in this inner loop, both E and M steps are performed for each
                 # variable, instead of for all variables at once.
+                # this implies that the E step for a later head variable will
+                # use the already updated parameters from the last variable.
+                # is this better or worse than the classical EM cycle?
+                # does it still converge performing the updates this way?
                 rules = self.model[head]
                 configs_table = self.configs_tables[head]
+                config_vars = [head]
+                for parent in self.parents[head]:
+                    config_vars.append(parent)
                 
                 ### E step ###
                 configs_table.loc[:, 'count'] = 0 # zero all counts
                 for i, row in dataset.iterrows():
                     for c, config in configs_table.iterrows():
-                        prob = self.inference(query=config, evidence=row)
+                        prob = self.inference(
+                                query=config.filter(items=config_vars),
+                                evidence=row)
                         configs_table.loc[c, 'count'] += prob # update count
 
                 ### M step ###
@@ -131,19 +140,20 @@ class plp(object):
                 else:
                     # there is no exact solution, run optimization method
                     initial_guess = []
-                    for i, rule in enumerate(rules):
-                        initial_guess[i] = rule['parameter']
+                    for rule in rules:
+                        initial_guess.append(rule['parameter'])
                     res = minimize(
-                            partial(self._family_log_likelihood, x),
+                            self._head_log_likelihood,
                             initial_guess,
+                            args = (head, -1.0),
                             method = 'L-BFGS-B',
-                            bounds = bnds,
+                            bounds = [(0.001,0.999)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
-                    optimal_params = res.x
+                    optimal_params = res.x.tolist()
                 
                 # update parameters of the model
                 for i, rule in enumerate(rules):
-                    rules[i]['parameter'] = optimal_params.pop(i)
+                    rules[i]['parameter'] = optimal_params.pop(0)
                 self.model[head] = rules
             
             # EM cycle stopping criteria
@@ -152,8 +162,25 @@ class plp(object):
             old_ll = ll
                 
         
-    def _family_log_likelihood(self, head, parameters):
-        return output
+    def _head_log_likelihood(self, parameters, head, sign=+1.0):
+        # parameters are only of rules which head is head
+        rules = list(self.model[head]) # make a copy of rules list
+        for i, rule in enumerate(rules):
+            rules[i]['parameter'] = parameters[i]
+        model = {head: rules}
+        parents = self.parents[head]
+        # update column likelihood of configs_table using given parameters
+        configs_table = self.configs_tables[head]
+        for c, config in configs_table.iterrows():
+            prob = self.inference(query = config.filter(items=[head]),
+                                  evidence = config.filter(items=parents),
+                                  model = model)
+            configs_table.loc[c, 'likelihood'] = prob
+        # calculate the sum of all log-likelihood * count for table
+        output = 0
+        for c, config in configs_table.iterrows():
+            output += config['count'] * math.log10(config['likelihood'])
+        return sign*output
 
     
     def _build_configs_tables(self):
@@ -179,7 +206,7 @@ class plp(object):
             self.configs_tables[head] = df
 
 
-    def inference(self, query, evidence=pd.Series()):
+    def inference(self, query, evidence=pd.Series(), model=None):
         """Computes inference for a set of query variables, given the model and
         evidences.
 
@@ -188,11 +215,53 @@ class plp(object):
         evidence -- a Panda Series containing observed values
 
         For both query and evidence arguments the indexes of the Pandas Series
-        should be the variable names. Values containing NaN will be interpreted
-        as missing and be disconsidered.
+        should be the variable names. Values different from 0 or 1 will be
+        interpreted as missing and be disconsidered.
         """
+        if model == None:
+            model = self.model
         # generate model string accordingly to ProbLog's syntax
-        # model =
-        
-        # @TODO: remove missing values in row
-        return prob
+        model_str = """"""
+        for head in model:
+            rules = model[head]
+            for rule in rules:
+                model_str += str(rule['parameter']) + '::' + head
+                if len(rule['body']) > 0:
+                    model_str += ':-'
+                    for parent in rule['body']:
+                        model_str += parent + ','
+                else:
+                    model_str += ','
+                model_str = model_str[:-1]
+                model_str += '.\n'
+        # add evidence
+        for var, value in evidence.iteritems():
+            if value == 1:
+                model_str += "evidence(%s, true).\n" % var
+            if value == 0:
+                model_str += "evidence(%s, false).\n" % var
+        # add query
+        dumb_var = "y"
+        while dumb_var in model.keys():
+            dumb_var += "y"
+        model_str += "%s:-" % dumb_var
+        for var, value in query.iteritems():
+            if value == 1:
+                model_str += "%s," % var
+            if value == 0:
+                model_str += "\+%s," % var
+        model_str = model_str[:-1]
+        model_str += '.\n'
+        model_str += "query(%s).\n" % dumb_var
+
+        # make inference using problog
+        print(model_str.lower())
+        pl_model = PrologString(model_str.lower())
+        try:
+            res = get_evaluatable().create_from(pl_model).evaluate()
+            for key in res:
+                output = res[key]
+        except InconsistentEvidenceError:
+            output = 0.0
+        print("Outputting inference: ", output)
+        return output
