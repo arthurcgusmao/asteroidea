@@ -110,6 +110,7 @@ class Plp(object):
         # begin EM cycle
         old_ll = 0
         while True:
+            ll = 0
             for head in self.model:
                 # in this inner loop, both E and M steps are performed for each
                 # variable, instead of for all variables at once.
@@ -133,11 +134,8 @@ class Plp(object):
                         configs_table.loc[c, 'count'] += prob # update count
 
                 ### M step ###
-                # @TODO: check if there is an exact solution for the parameters
-                if(False):
-                    # there is an exact solution, calculate it
-                    optimal_params = self._exact_ll_maximization() # NOT IMPLEMENTED YET
-                else:
+                optimal_params = self._exact_ll_maximization()
+                if optimal_params == False:
                     # there is no exact solution, run optimization method
                     initial_guess = []
                     for rule in rules:
@@ -151,11 +149,13 @@ class Plp(object):
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
                 
+                # update log-likelihood
+                ll += self._head_log_likelihood(optimal_params, head)
                 # update parameters of the model
                 for i, rule in enumerate(rules):
                     rules[i]['parameter'] = optimal_params.pop(0)
                 self.model[head] = rules
-            
+                
             # EM cycle stopping criteria
             if (abs(ll - old_ll) / ll) < epsilon:
                 break
@@ -169,16 +169,31 @@ class Plp(object):
             rules[i]['parameter'] = parameters[i]
         model = {head: rules}
         parents = self.parents[head]
-        # update column likelihood of configs_table using given parameters
         configs_table = self.configs_tables[head]
-        for c, config in configs_table.iterrows():
-            prob = self.inference(query = config.filter(items=[head]),
-                                  evidence = config.filter(items=parents),
-                                  model = model)
-            configs_table.loc[c, 'likelihood'] = prob
+        # update column likelihood of configs_table using given parameters.
+        # we only need to consider configurations which count > 0
+        for c, config in configs_table[configs_table['count'] > 0].iterrows():
+            # we only need to update the value of the likelihood for the cases
+            # where the parameters influence it (i.e., when there are active
+            # rules).
+            if config['active_rules'] != '':
+                # convert active_rules string to list
+                active_rules = config['active_rules'].split(',')
+                active_rules = [int(r) for r in active_rules]
+                # calculate likelihood
+                prob = 0
+                for rule_index in active_rules:
+                    param = rules[rule_index]['parameter']
+                    prob += param - prob * param
+                if config[head] == 0:
+                    prob = 1 - prob
+                # prob = self.inference(query = config.filter(items=[head]),
+                #                       evidence = config.filter(items=parents),
+                #                       model = model)
+                configs_table.loc[c, 'likelihood'] = prob
         # calculate the sum of all log-likelihood * count for table
         output = 0
-        for c, config in configs_table.iterrows():
+        for c, config in configs_table[configs_table['count'] > 0].iterrows():
             output += config['count'] * math.log10(config['likelihood'])
         return sign*output
 
@@ -196,13 +211,31 @@ class Plp(object):
         self.configs_tables = {}
         for head in self.model:
             rules = self.model[head]
-            columns = [head]
-            columns.extend(self.parents[head])
+            init_columns = [head]
+            init_columns.extend(self.parents[head])
             configs_values = list(
-                map(list, itertools.product([0, 1], repeat=len(columns))))
-            df = pd.DataFrame(configs_values, columns=columns)
+                map(list, itertools.product([0, 1], repeat=len(init_columns))))
+            df = pd.DataFrame(configs_values, columns=init_columns)
             df.loc[:,'count'] = pd.Series(np.nan, index=df.index)
             df.loc[:,'likelihood'] = pd.Series(np.nan, index=df.index)
+            df.loc[:,'active_rules'] = pd.Series(None, index=df.index)
+            for c, config in df.iterrows():
+                # fill active_rules column
+                active_rules = []
+                for r, rule in enumerate(rules):
+                    body = rule['body']
+                    rule_active = True
+                    for parent in body:
+                        if not body[parent] == config[parent]:
+                            rule_active = False
+                    if rule_active:
+                        active_rules.append(str(r))
+                # converts list to string
+                df.loc[c, 'active_rules'] = ','.join(active_rules)
+                # pre-compute likelihood values that doesn't depend on the
+                # parameters (they are defined by the structure)
+                if len(active_rules) == 0:
+                    df.loc[c, 'likelihood'] = 1 - config[head]
             self.configs_tables[head] = df
 
 
@@ -253,9 +286,7 @@ class Plp(object):
         model_str = model_str[:-1]
         model_str += '.\n'
         model_str += "query(%s).\n" % dumb_var
-
         # make inference using problog
-        print(model_str.lower())
         pl_model = PrologString(model_str.lower())
         try:
             res = get_evaluatable().create_from(pl_model).evaluate()
@@ -263,5 +294,9 @@ class Plp(object):
                 output = res[key]
         except InconsistentEvidenceError:
             output = 0.0
-        print("Outputting inference: ", output)
         return output
+
+
+    def _exact_ll_maximization(self):
+        # return False if there is no exact solution
+        return False
