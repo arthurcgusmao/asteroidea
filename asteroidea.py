@@ -1,3 +1,4 @@
+import time
 import math
 import numpy as np
 import pandas as pd
@@ -57,9 +58,9 @@ class Plp(object):
             # remove end of line and whitespace
             line = line.replace('.\n', '').replace(' ', '')
             # parse line
-            parameter, head = line.split('::', 1)
-            if ':-' in head:
-                head, body = head.split(':-')
+            parameter, clause = line.split('::', 1)
+            if ':-' in clause:
+                head, body = clause.split(':-')
                 body = body.split(',')
                 body_dict = {}
                 for body_var in body:
@@ -69,12 +70,14 @@ class Plp(object):
                     else:
                         body_dict[body_var] = 1
             else:
+                head = clause
                 body_dict = {}
             # update self.model
             if not head in self.model:
                 self.model[head] = []
             self.model[head].append({'parameter': float(parameter),
-                                     'body': body_dict})
+                                     'body': body_dict,
+                                     'clause_string': clause})
             # update self.parents
             if not head in self.parents:
                 self.parents[head] = set()
@@ -107,7 +110,8 @@ class Plp(object):
         self._build_configs_tables()
 
         # begin EM cycle
-        old_ll = 0
+        old_ll = None
+        self._update_learning_info(np.nan, begin_em=True)
         while True:
             ll = 0
             for head in self.model:
@@ -144,7 +148,8 @@ class Plp(object):
                             initial_guess,
                             args = (head, -1.0),
                             method = 'L-BFGS-B',
-                            bounds = [(0.001,0.999)]*len(initial_guess),
+                            bounds = [(0.00001, 0.99999)]*len(initial_guess),
+                            # bounds = [(0.001,0.999)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
                 
@@ -152,13 +157,17 @@ class Plp(object):
                 ll += self._head_log_likelihood(optimal_params, head)
                 # update parameters of the model
                 for i, rule in enumerate(rules):
-                    rules[i]['parameter'] = optimal_params.pop(0)
+                    rules[i]['parameter'] = optimal_params[i]
                 self.model[head] = rules
-                
             # EM cycle stopping criteria
-            if (abs(ll - old_ll) / ll) < epsilon:
-                break
+            if old_ll != None:
+                if abs((ll - old_ll) / ll) < epsilon:
+                    learning_info = self._update_learning_info(ll, end_em=True)
+                    break
             old_ll = ll
+            # update data about iterations
+            self._update_learning_info(ll)
+        return learning_info
                 
         
     def _head_log_likelihood(self, parameters, head, sign=+1.0):
@@ -309,10 +318,34 @@ class Plp(object):
             for key in res:
                 output = res[key]
         except InconsistentEvidenceError:
-            output = 0.0
+            raise InconsistentEvidenceError("""This error may have occured
+                because some observation in the dataset is impossible given the
+                model structure.""")
         return output
 
 
     def _exact_ll_maximization(self):
         # return False if there is no exact solution
         return False
+
+
+    def _update_learning_info(self, log_likelihood, begin_em=False, end_em=False):
+        if begin_em:
+            self._start_time = time.time()
+            self._learning_info = []
+        iter_data = []
+        for head in self.model:
+            for rule in self.model[head]:
+                iter_data.append(rule['parameter'])
+        elapsed_time = time.time() - self._start_time
+        iter_data.extend([elapsed_time, log_likelihood])
+        self._learning_info.append(iter_data)
+        if end_em:
+            columns = []
+            for head in self.model:
+                for rule in self.model[head]:
+                    columns.append(rule['clause_string'])
+            columns.extend(['Elapsed Time', 'Log-Likelihood'])
+            return pd.DataFrame(self._learning_info, columns=columns)
+
+        
