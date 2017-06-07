@@ -329,7 +329,19 @@ class Plp(object):
         return False
 
 
-    def _update_learning_info(self, log_likelihood, begin_em=False, end_em=False):
+    def _update_learning_info(self, log_likelihood,
+                              begin_em=False, end_em=False):
+        """This function stores information about parameters, log-likelihood
+        and elapsed time during parameter learning. At the end of the cycle,
+        it'll put this information into a DataFrame accessible by
+        self.learn_parameters_info.
+
+        Keyword arguments:
+        log_likelihood -- the expected-value of the log-likelihood of the whole
+                          model given the dataset
+        begin_em -- indicates that the EM cycle is beginning
+        end_em -- indicates that the EM cycle is ending
+        """
         if begin_em:
             self._start_time = time.time()
             self._learning_data = []
@@ -346,6 +358,5 @@ class Plp(object):
                 for rule in self.model[head]:
                     columns.append(rule['clause_string'])
             columns.extend(['Elapsed Time', 'Log-Likelihood'])
-            self.learn_parameters_info = pd.DataFrame(self._learning_data, columns=columns)
-
-        
+            self.learn_parameters_info = pd.DataFrame(self._learning_data,
+                                                      columns=columns)
