@@ -332,20 +332,20 @@ class Plp(object):
     def _update_learning_info(self, log_likelihood, begin_em=False, end_em=False):
         if begin_em:
             self._start_time = time.time()
-            self._learning_info = []
+            self._learning_data = []
         iter_data = []
         for head in self.model:
             for rule in self.model[head]:
                 iter_data.append(rule['parameter'])
         elapsed_time = time.time() - self._start_time
         iter_data.extend([elapsed_time, log_likelihood])
-        self._learning_info.append(iter_data)
+        self._learning_data.append(iter_data)
         if end_em:
             columns = []
             for head in self.model:
                 for rule in self.model[head]:
                     columns.append(rule['clause_string'])
             columns.extend(['Elapsed Time', 'Log-Likelihood'])
-            return pd.DataFrame(self._learning_info, columns=columns)
+            self.learn_parameters_info = pd.DataFrame(self._learning_data, columns=columns)
 
         
