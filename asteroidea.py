@@ -107,13 +107,8 @@ class Plp(object):
         self._update_learning_info(np.nan, begin_em=True)
         while True:
             ll = 0
+            new_params = {}
             for head in self.model:
-                # in this inner loop, both E and M steps are performed for each
-                # variable, instead of for all variables at once.
-                # this implies that the E step for a later head variable will
-                # use the already updated parameters from the last variable.
-                # is this better or worse than the classical EM cycle?
-                # does it still converge performing the updates this way?
                 rules = self.model[head]
                 configs_table = self.configs_tables[head]
                 config_vars = [head]
@@ -148,10 +143,14 @@ class Plp(object):
                 
                 # update log-likelihood
                 ll += self._head_log_likelihood(optimal_params, head)
-                # update parameters of the model
+                # store new parameters
+                new_params[head] = optimal_params
+            
+            # update parameters of the model
+            for head in self.model:
+                rules = self.model[head]
                 for i, rule in enumerate(rules):
-                    rules[i]['parameter'] = optimal_params[i]
-                self.model[head] = rules
+                    rules[i]['parameter'] = new_params[head][i]
             # EM cycle stopping criteria
             if old_ll != None:
                 if abs((ll - old_ll) / ll) < epsilon:
