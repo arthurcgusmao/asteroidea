@@ -6,12 +6,32 @@ import itertools
 from scipy.optimize import basinhopping, minimize
 from problog.program import PrologString
 from problog import get_evaluatable
+from problog.evaluator import SemiringLogProbability
+from problog.logic import Term, Constant
 from problog.errors import InconsistentEvidenceError
 
+
+
+class CustomSemiring(SemiringLogProbability):
+    # this class is used to make inference faster for the same structure but
+    # changing parameters using ProbLog
+    
+    def __init__(self, weights):
+        SemiringLogProbability.__init__(self)
+        self.weights = weights
+
+        
+    def value(self, a):
+        # Argument 'a' contains ground term. Look up its probability in the
+        # weights dictionary.
+        return SemiringLogProbability.value(self, self.weights.get(a, a))
+
+
+    
 class Plp(object):
 
     def __init__(self):
-        print('')
+        self.problog_knowledge_sr = None
 
         
     def read_structure(self, filepath):
@@ -108,23 +128,13 @@ class Plp(object):
         while True:
             ll = 0
             new_params = {}
+                
+            ### E step ###
+            self._update_count(dataset)
+                
+            ### M step ###
             for head in self.model:
                 rules = self.model[head]
-                configs_table = self.configs_tables[head]
-                config_vars = [head]
-                for parent in self.parents[head]:
-                    config_vars.append(parent)
-                
-                ### E step ###
-                configs_table.loc[:, 'count'] = 0 # zero all counts
-                for i, row in dataset.iterrows():
-                    for c, config in configs_table.iterrows():
-                        prob = self.inference(
-                                query=config.filter(items=config_vars),
-                                evidence=row)
-                        configs_table.loc[c, 'count'] += prob # update count
-
-                ### M step ###
                 optimal_params = self._exact_ll_maximization(head)
                 if optimal_params == False:
                     # there is no exact solution, run optimization method
@@ -145,6 +155,7 @@ class Plp(object):
                 ll += self._head_log_likelihood(optimal_params, head)
                 # store new parameters
                 new_params[head] = optimal_params
+            print('\nnewparams::::', new_params)
             
             # update parameters of the model
             for head in self.model:
@@ -253,66 +264,133 @@ class Plp(object):
             self.configs_tables[head] = df
 
 
-    def inference(self, query, evidence=pd.Series(), model=None):
-        """Computes inference for a set of query variables, given the model and
-        evidences.
+    def inference(self, evidence=pd.Series()):
+        """Computes inference for all configurations of all families of head
+        variables, given the current model and evidences.
+
         Keyword arguments:
-        query -- a Panda Series containing queried values
-        evidence -- a Panda Series containing observed values
-        model -- a model (structure + parameters) to replace self.model
-        For both query and evidence arguments the indexes of the Pandas Series
-        should be the variable names. Values different from 0 or 1 will be
-        interpreted as missing and be disconsidered.
+        evidence -- a Panda Series containing observed values. The indexes of
+                    the Pandas Series should be the variable names. Values
+                    different from 0 or 1 will be interpreted as missing
+                    and be disconsidered.
         """
-        if model == None:
-            model = self.model
-        # generate model string accordingly to ProbLog's syntax
-        model_str = """"""
-        for head in model:
-            rules = model[head]
-            for rule in rules:
-                model_str += str(rule['parameter']) + '::' + head
-                if len(rule['body']) > 0:
-                    model_str += ':-'
-                    for parent_key,parent_value in rule['body'].items():
-                        if parent_value==0:
-                            model_str += "\+"
-                        model_str += parent_key + ','
-                else:
-                    model_str += ','
-                model_str = model_str[:-1]
-                model_str += '.\n'
-        # add evidence
+        model = self.model
+        if self.problog_knowledge_sr == None:
+            # generate model string accordingly to ProbLog's syntax
+            model_str = """"""
+            evidences_str = """"""
+            queries_str = """"""
+            self.params_strings = []
+            dumb_var = "y"
+            while dumb_var in model.keys():
+                dumb_var += "y"
+            for head in model:
+                # add clauses -- we use a variable named theta_head_index to
+                # change the model's parameters dinamically
+                rules = model[head]
+                for i, rule in enumerate(rules):
+                    param_str = 'theta_' + head + '_' + str(i)
+                    model_str += param_str + '::' + rule['clause_string'] + '.\n'
+                    self.params_strings.append(param_str.lower())
+                # add evidence and query -- all variables should be
+                # evidence/queries because only then we can avoid recompiling
+                # the model for different evidences/queries. There is no
+                # problem in setting every evidence to true because later these
+                # values are discarded.
+                # evidence:
+                evidences_str += "evidence(%s, true).\n" % head
+                # queries (each configuration is a query):
+                configs_table = self.configs_tables[head]
+                config_vars = [head]
+                for parent in self.parents[head]:
+                    config_vars.append(parent)
+                for c, config in configs_table.iterrows():
+                    query = config.filter(items=config_vars)
+                    config_dumb_var = dumb_var + '_' + head + '_' + str(c)
+                    queries_str += config_dumb_var + ':-'
+                    for var, value in query.iteritems():
+                        if value == 1:
+                            queries_str += "%s," % var
+                        if value == 0:
+                            queries_str += "\+%s," % var
+                    queries_str = queries_str[:-1]
+                    queries_str += '.\n'
+                    queries_str += "query(%s).\n" % config_dumb_var
+            model_str += evidences_str + queries_str
+            model_str = model_str.lower()
+            self.model_str = model_str
+
+            # parse the Prolog string
+            pl_model_sr = PrologString(model_str)
+            # compile the Prolog model
+            self.problog_knowledge_sr = get_evaluatable().create_from(pl_model_sr)
+
+        # change model weights
+        custom_weights = {}
+        for x in self.problog_knowledge_sr.get_weights().values():
+            if getattr(x, "functor", None):
+                for head in self.model:
+                    rules = self.model[head]
+                    for i, rule in enumerate(rules):
+                        param_str = 'theta_' + head + '_' + str(i)
+                        param_str = param_str.lower()
+                        if x.functor == param_str:
+                            custom_weights[x] = rule['parameter']
+        print('\ncustom_weights: ', custom_weights)
+
+        # change evidence
+        evidence_dict = {}
         for var, value in evidence.iteritems():
             if value == 1:
-                model_str += "evidence(%s, true).\n" % var
+                term = Term(var)
+                evidence_dict[term] = True
             if value == 0:
-                model_str += "evidence(%s, false).\n" % var
-        # add query
-        dumb_var = "y"
-        while dumb_var in model.keys():
-            dumb_var += "y"
-        model_str += "%s:-" % dumb_var
-        for var, value in query.iteritems():
-            if value == 1:
-                model_str += "%s," % var
-            if value == 0:
-                model_str += "\+%s," % var
-        model_str = model_str[:-1]
-        model_str += '.\n'
-        model_str += "query(%s).\n" % dumb_var
-        # make inference using problog
-        pl_model = PrologString(model_str.lower())
+                term = Term(var)
+                evidence_dict[term] = False
+        print('\nEVIDENCE DICT: ', evidence_dict)
+        # make inference
         try:
-            res = get_evaluatable().create_from(pl_model).evaluate()
-            for key in res:
-                output = res[key]
+            res = self.problog_knowledge_sr.evaluate(
+                    evidence=evidence_dict,
+                    # keep_evidence=False,
+                    semiring=CustomSemiring(custom_weights)),
+            output = {}
+            for key in res[0]:
+                output[str(key)] = res[0][key]
+            # output = res[0]
         except InconsistentEvidenceError:
             raise InconsistentEvidenceError("""This error may have occured
                 because some observation in the dataset is impossible given the
                 model structure.""")
         return output
 
+
+    def _update_count(self, dataset):
+        """Computes the E step of the EM algorithm, updating the configurations
+        tables for all head variables. It uses ProbLog to make inference.
+        """
+        for head in self.model:
+            self.configs_tables[head].loc[:, 'count'] = 0
+        dumb_var = "y"
+        while dumb_var in self.model.keys():
+            dumb_var += "y"
+        for i, row in dataset.iterrows():
+            res = self.inference(evidence=row)
+            increments_in_count = {}
+            for head in self.model:
+                increments_in_count[head] = {}
+            for head in self.model:
+                configs_table = self.configs_tables[head]
+                config_vars = [head]
+                for parent in self.parents[head]:
+                    config_vars.append(parent)
+                for c, config in configs_table.iterrows():
+                    config_dumb_var = dumb_var + '_' + head + '_' + str(c)
+                    update_in_count = res[config_dumb_var.lower()]
+                    configs_table.loc[c, 'count'] += update_in_count
+                    increments_in_count[head][c] = update_in_count
+        self.increments_in_count = increments_in_count
+    
 
     def _exact_ll_maximization(self):
         # return False if there is no exact solution
@@ -350,6 +428,7 @@ class Plp(object):
             self.learn_parameters_info = pd.DataFrame(self._learning_data,
                                                       columns=columns)
 
+            
     def _exact_ll_maximization(self,head):
         """Returns the optimal parameters that maximize the likelihood for a
         number of structures. If for the given structure it is not possible to
