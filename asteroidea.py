@@ -131,32 +131,27 @@ class Plp(object):
                 
             ### E step ###
             for head in self.model:
+                # reset configurations tables
                 self.configs_tables[head].loc[:, 'count'] = 0
             dumb_var = "y"
             while dumb_var in self.model.keys():
                 dumb_var += "y"
             for i, row in dataset.iterrows():
                 res = self.inference(evidence=row)
-                increments_in_count = {}
-                for head in self.model:
-                    increments_in_count[head] = {}
                 for head in self.model:
                     configs_table = self.configs_tables[head]
-                    config_vars = [head]
-                    for parent in self.parents[head]:
-                        config_vars.append(parent)
+                    config_vars = [head].extend(self.parents[head])
                     for c, config in configs_table.iterrows():
                         config_dumb_var = dumb_var + '_' + head + '_' + str(c)
                         update_in_count = res[config_dumb_var.lower()]
                         configs_table.loc[c, 'count'] += update_in_count
-                        increments_in_count[head][c] = update_in_count
-            self.increments_in_count = increments_in_count            
 
             ### M step ###
             for head in self.model:
                 rules = self.model[head]
                 optimal_params = self._exact_ll_maximization(head)
                 if optimal_params == False:
+                    print("Iteration", len(self._learning_data), "had no exact solution for head", head, "bro.")
                     # there is no exact solution, run optimization method
                     initial_guess = []
                     for rule in rules:
@@ -175,7 +170,6 @@ class Plp(object):
                 ll += self._head_log_likelihood(optimal_params, head)
                 # store new parameters
                 new_params[head] = optimal_params
-            print('\nnewparams::::', new_params)
             
             # update parameters of the model
             for head in self.model:
@@ -193,7 +187,7 @@ class Plp(object):
         return learning_info
                 
         
-    def _head_log_likelihood(self, parameters, head, sign=+1.0):
+    def _head_log_likelihood(self, parameters, head, sign=1):
         """Returns the expected-value of the log-likelihood of a head variable
         given its parents, for all possible configurations the examples of a
         dataset can take. In other words, it is the function that the M step
@@ -206,7 +200,6 @@ class Plp(object):
         sign -- sign of the output. Default is 1.0, use -1.0 for
                 minus-log-likelihood
         """
-        # parameters are only of rules which head is head
         rules = list(self.model[head]) # make a copy of rules list
         for i, rule in enumerate(rules):
             rules[i]['parameter'] = parameters[i]
@@ -227,12 +220,9 @@ class Plp(object):
                 prob = 0
                 for rule_index in active_rules:
                     param = rules[rule_index]['parameter']
-                    prob += param - prob * param
+                    prob += param - (prob * param)
                 if config[head] == 0:
                     prob = 1 - prob
-                # prob = self.inference(query = config.filter(items=[head]),
-                #                       evidence = config.filter(items=parents),
-                #                       model = model)
                 configs_table.loc[c, 'likelihood'] = prob
         # calculate the sum of all log-likelihood * count for table
         output = 0
@@ -356,7 +346,6 @@ class Plp(object):
                         param_str = param_str.lower()
                         if x.functor == param_str:
                             custom_weights[x] = rule['parameter']
-        print('\ncustom_weights: ', custom_weights)
 
         # change evidence
         evidence_dict = {}
@@ -368,7 +357,7 @@ class Plp(object):
             if value == 0:
                 term = Term(var)
                 evidence_dict[term] = False
-        print('\nEVIDENCE DICT: ', evidence_dict)
+                
         # make inference
         try:
             res = self.problog_knowledge_sr.evaluate(
@@ -423,11 +412,11 @@ class Plp(object):
         number of structures. If for the given structure it is not possible to
         find the optimal paramters using this method, returns False.
         """
-        return False
         configs_table = self.configs_tables[head]
+        rules_combinations = set(configs_table['active_rules'].tolist())
 
         #Combinations of 1 rule
-        if len(configs_table['active_rules'])==0: #Exact sollution
+        if set(["1"])==rules_combinations: #Exact sollution
             A1=configs_table.loc[configs_table[head]==0,'count'].sum(axis=1)
             A0=configs_table.loc[configs_table[head]==1,'count'].sum(axis=1)
 
@@ -438,20 +427,8 @@ class Plp(object):
 
             return probabilities_list
 
-        if set(["1"])==set(configs_table['active_rules']): #Exact sollution
-            coefficients=self.calculate_coefficients(["1"])
-            A1=coefficients[0]
-            A0=coefficients[1]
-
-            aux_a=np.float64(A0)/(A0+A1)
-            if A0+A1==0:
-                aux_a=0.5
-            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
-
-            return probabilities_list
-
         #Combinations of 2 rules
-        if set(["1","2"])==set(configs_table['active_rules']): #Exact sollution
+        if set(["1","2"])==rules_combinations: #Exact sollution
             coefficients=self.calculate_coefficients(["1","2"])
             A1=coefficients[0]
             A0=coefficients[1]
@@ -471,7 +448,7 @@ class Plp(object):
 
             return probabilities_list
 
-        if set(["1","1,2"])==set(configs_table['active_rules']): #Exact sollution
+        if set(["1","1,2"])==rules_combinations: #Exact sollution
             coefficients=self.calculate_coefficients(["1","1,2"])
             A1=coefficients[0]
             A0=coefficients[1]
@@ -514,11 +491,11 @@ class Plp(object):
 
             return probabilities_list
 
-        if set(["1","2","1,2"])==set(configs_table['active_rules']): #No exact sollution
+        if set(["1","2","1,2"])==rules_combinations: #No exact sollution
             return False
 
         #Combinations of 3 rules
-        if set(["1","2","3"])==set(configs_table['active_rules']): #Exact sollution
+        if set(["1","2","3"])==rules_combinations: #Exact sollution
             coefficients=self.calculate_coefficients(["1","2","3"])
             A1=coefficients[0]
             A0=coefficients[1]
@@ -545,19 +522,19 @@ class Plp(object):
         
             return probabilities_list
 
-        if set(["1","2","1,2","3"])==set(configs_table['active_rules']): #No exact sollution      
+        if set(["1","2","1,2","3"])==rules_combinations: #No exact sollution      
             return False
 
-        if set(["1","1,2","1,3","1,2,3"])==set(configs_table['active_rules']): #No exact sollution
+        if set(["1","1,2","1,3","1,2,3"])==rules_combinations: #No exact sollution
             return False
 
-        if set(["1","2","1,3","2,3"])==set(configs_table['active_rules']): #No exact sollution
+        if set(["1","2","1,3","2,3"])==rules_combinations: #No exact sollution
             return False
 
-        if set(["2","3","1,2","1,3"])==set(configs_table['active_rules']): #No exact sollution
+        if set(["2","3","1,2","1,3"])==rules_combinations: #No exact sollution
             return False
 
-        if set(["1","1,2","1,3"])==set(configs_table['active_rules']): #Exact sollution
+        if set(["1","1,2","1,3"])==rules_combinations: #Exact sollution
             coefficients=self.calculate_coefficients(["1","1,2","1,3"])
             A1=coefficients[0]
             A0=coefficients[1]
@@ -620,7 +597,7 @@ class Plp(object):
             return probabilities_list
 
         #Combinations of 4 rules
-        if set(["1","2","3","4"])==set(configs_table['active_rules']): #Exact sollution
+        if set(["1","2","3","4"])==rules_combinations: #Exact sollution
             coefficients=self.calculate_coefficients(["1","2","3","4"])
             A1=coefficients[0]
             A0=coefficients[1]
