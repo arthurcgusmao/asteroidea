@@ -130,8 +130,28 @@ class Plp(object):
             new_params = {}
                 
             ### E step ###
-            self._update_count(dataset)
-                
+            for head in self.model:
+                self.configs_tables[head].loc[:, 'count'] = 0
+            dumb_var = "y"
+            while dumb_var in self.model.keys():
+                dumb_var += "y"
+            for i, row in dataset.iterrows():
+                res = self.inference(evidence=row)
+                increments_in_count = {}
+                for head in self.model:
+                    increments_in_count[head] = {}
+                for head in self.model:
+                    configs_table = self.configs_tables[head]
+                    config_vars = [head]
+                    for parent in self.parents[head]:
+                        config_vars.append(parent)
+                    for c, config in configs_table.iterrows():
+                        config_dumb_var = dumb_var + '_' + head + '_' + str(c)
+                        update_in_count = res[config_dumb_var.lower()]
+                        configs_table.loc[c, 'count'] += update_in_count
+                        increments_in_count[head][c] = update_in_count
+            self.increments_in_count = increments_in_count            
+
             ### M step ###
             for head in self.model:
                 rules = self.model[head]
@@ -341,6 +361,7 @@ class Plp(object):
         # change evidence
         evidence_dict = {}
         for var, value in evidence.iteritems():
+            var = var.lower()
             if value == 1:
                 term = Term(var)
                 evidence_dict[term] = True
@@ -363,38 +384,6 @@ class Plp(object):
                 because some observation in the dataset is impossible given the
                 model structure.""")
         return output
-
-
-    def _update_count(self, dataset):
-        """Computes the E step of the EM algorithm, updating the configurations
-        tables for all head variables. It uses ProbLog to make inference.
-        """
-        for head in self.model:
-            self.configs_tables[head].loc[:, 'count'] = 0
-        dumb_var = "y"
-        while dumb_var in self.model.keys():
-            dumb_var += "y"
-        for i, row in dataset.iterrows():
-            res = self.inference(evidence=row)
-            increments_in_count = {}
-            for head in self.model:
-                increments_in_count[head] = {}
-            for head in self.model:
-                configs_table = self.configs_tables[head]
-                config_vars = [head]
-                for parent in self.parents[head]:
-                    config_vars.append(parent)
-                for c, config in configs_table.iterrows():
-                    config_dumb_var = dumb_var + '_' + head + '_' + str(c)
-                    update_in_count = res[config_dumb_var.lower()]
-                    configs_table.loc[c, 'count'] += update_in_count
-                    increments_in_count[head][c] = update_in_count
-        self.increments_in_count = increments_in_count
-    
-
-    def _exact_ll_maximization(self):
-        # return False if there is no exact solution
-        return False
 
 
     def _update_learning_info(self, log_likelihood,
@@ -434,6 +423,7 @@ class Plp(object):
         number of structures. If for the given structure it is not possible to
         find the optimal paramters using this method, returns False.
         """
+        return False
         configs_table = self.configs_tables[head]
 
         #Combinations of 1 rule
