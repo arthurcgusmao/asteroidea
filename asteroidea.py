@@ -17,19 +17,15 @@ class Plp(object):
     def read_structure(self, filepath):
         """Reads a file containing a structure for the PLP program. The
         structure should be written accordingly to ProbLog's syntax.
-
         The structure is stored in a dict called self.model where each key is
         the head of the rules and the value is a rules list (for the given
         head).
-
         Each rule in the rules list corresponds to a dict with the following
         key-value pairs:
         parameter -- the parameter of the rule;
         body -- a dict where each key is a variable and its value is 1 if the
                 variable is non-negated or 0 if it is negated.
-
         An example: for the set of rules
-
             0.6::X1.
             0.7::X2.
             0.8::X3:-X1,\+X2.
@@ -42,7 +38,6 @@ class Plp(object):
             'X2': [{'parameter': 0.7, 'body': {}}],
             'X3': [{'parameter': 0.8, 'body': {'X1': 1, 'X2': 0}},
                    {'parameter': 0.9, 'body': {'X1': 0}}]}
-
         Also, another dict called self.parents is created. It stores for each
         head a set of its parents. In our example, we would have:
         
@@ -90,11 +85,9 @@ class Plp(object):
         """Find the (exact or approximated) optimal parameters for the dataset.
         Before running this function, make sure you have read a structure file
         compatible with the variables present in the dataset.
-
         Keyword arguments:
         dataset -- Pandas DataFrame containing the observations
         epsilon -- stopping criteria
-
         Missing values in the dataset should be represented as NaN.
         """
         # ensure dataset is a pandas dataframe
@@ -137,7 +130,7 @@ class Plp(object):
                         configs_table.loc[c, 'count'] += prob # update count
 
                 ### M step ###
-                optimal_params = self._exact_ll_maximization()
+                optimal_params = self._exact_ll_maximization(head)
                 if optimal_params == False:
                     # there is no exact solution, run optimization method
                     initial_guess = []
@@ -177,7 +170,6 @@ class Plp(object):
         tries to maximize in the EM cycle. It is implict that the model and the
         dataset are given, and that the appropriated calculations in
         self.configs_tables[head] were made.
-
         Keyword arguments:
         parameters -- the parameters for the set of rules which head is head
         head -- the variable that is head of the rules
@@ -222,7 +214,6 @@ class Plp(object):
     def _build_configs_tables(self):
         """Builds self.configs_tables dict, which for each head is associated a
         Pandas DataFrame that represents the configurations table for that head.
-
         Columns of each dataframe are:
         head variable -- value the head variable takes for the configuration
         body variable(s) -- value the parents of head take for the config
@@ -266,12 +257,10 @@ class Plp(object):
     def inference(self, query, evidence=pd.Series(), model=None):
         """Computes inference for a set of query variables, given the model and
         evidences.
-
         Keyword arguments:
         query -- a Panda Series containing queried values
         evidence -- a Panda Series containing observed values
         model -- a model (structure + parameters) to replace self.model
-
         For both query and evidence arguments the indexes of the Pandas Series
         should be the variable names. Values different from 0 or 1 will be
         interpreted as missing and be disconsidered.
@@ -286,8 +275,10 @@ class Plp(object):
                 model_str += str(rule['parameter']) + '::' + head
                 if len(rule['body']) > 0:
                     model_str += ':-'
-                    for parent in rule['body']:
-                        model_str += parent + ','
+                    for parent_key,parent_value in rule['body'].items():
+                        if parent_value==0:
+                            model_str += "\+"
+                        model_str += parent_key + ','
                 else:
                     model_str += ','
                 model_str = model_str[:-1]
@@ -335,7 +326,6 @@ class Plp(object):
         and elapsed time during parameter learning. At the end of the cycle,
         it'll put this information into a DataFrame accessible by
         self.learn_parameters_info.
-
         Keyword arguments:
         log_likelihood -- the expected-value of the log-likelihood of the whole
                           model given the dataset
@@ -360,3 +350,252 @@ class Plp(object):
             columns.extend(['Elapsed Time', 'Log-Likelihood'])
             self.learn_parameters_info = pd.DataFrame(self._learning_data,
                                                       columns=columns)
+
+    def _exact_ll_maximization(self,head):
+        """Returns the optimal parameters that maximize the likelihood for a
+        number of structures. If for the given structure it is not possible to
+        find the optimal paramters using this method, returns False.
+        """
+        configs_table = self.configs_tables[head]
+
+        #Combinations of 1 rule
+        if len(configs_table['active_rules'])==0: #Exact sollution
+            A1=configs_table.loc[configs_table[head]==0,'count'].sum(axis=1)
+            A0=configs_table.loc[configs_table[head]==1,'count'].sum(axis=1)
+
+            aux_a=np.float64(A0)/(A0+A1)
+            if A0+A1==0:
+                aux_a=0.5
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+
+            return probabilities_list
+
+        if set(["1"])==set(configs_table['active_rules']): #Exact sollution
+            coefficients=self.calculate_coefficients(["1"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+
+            aux_a=np.float64(A0)/(A0+A1)
+            if A0+A1==0:
+                aux_a=0.5
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+
+            return probabilities_list
+
+        #Combinations of 2 rules
+        if set(["1","2"])==set(configs_table['active_rules']): #Exact sollution
+            coefficients=self.calculate_coefficients(["1","2"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+            B1=coefficients[2]
+            B0=coefficients[3] 
+
+            aux_a=np.float64(A0)/(A0+A1)
+            if A0+A1==0:
+                aux_a=0.5
+
+            aux_b=np.float64(B0)/(B0+B1)
+            if B0+B1==0:
+                aux_b=0.5
+
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+            probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
+
+            return probabilities_list
+
+        if set(["1","1,2"])==set(configs_table['active_rules']): #Exact sollution
+            coefficients=self.calculate_coefficients(["1","1,2"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+            B1=coefficients[2]
+
+            exact_sollution=True  
+
+            aux_a=np.float64(A0)/(A0+A1)
+
+            aux_b=np.float64(A1*B0-A0*B1)/(A1*B0+A1*B1)
+
+            if A0+A1==0:
+                aux_a=0.0
+                aux_b=np.float64(B0)/(B0+B1)
+                if B0+B1==0:
+                    aux_a=0.5
+                    aux_b=0.5
+
+            if A1*B0+A1*B1==0:
+                if A1==0:
+                    if B0==0 and B1==0:
+                        aux_b=0.5
+                    if B0==0 and B1!=0:
+                        aux_b=0.0
+                    if B0!=0 and B1==0:
+                        aux_b=1.0
+                    if B0!=0 and B1!=0:
+                        aux_b=B0/(B0+B1)
+                        if exact_sollution==True:
+                            exact_sollution=False  
+                else: #A1!=0       
+                    if B0==0 and B1==0:
+                        aux_b=0.5
+
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+            probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2  
+
+            if not exact_sollution:
+                return False
+
+            return probabilities_list
+
+        if set(["1","2","1,2"])==set(configs_table['active_rules']): #No exact sollution
+            return False
+
+        #Combinations of 3 rules
+        if set(["1","2","3"])==set(configs_table['active_rules']): #Exact sollution
+            coefficients=self.calculate_coefficients(["1","2","3"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+            B1=coefficients[2]
+            B0=coefficients[3]
+            C1=coefficients[4]
+            C0=coefficients[5]     
+
+            aux_a=np.float64(A0)/(A0+A1)
+            if A0+A1==0:
+                aux_a=0.5
+
+            aux_b=np.float64(B0)/(B0+B1)
+            if B0+B1==0:
+                aux_b=0.5
+
+            aux_c=np.float64(C0)/(C0+C1)
+            if C0+C1==0:
+                aux_c=0.5
+
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+            probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
+            probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3         
+        
+            return probabilities_list
+
+        if set(["1","2","1,2","3"])==set(configs_table['active_rules']): #No exact sollution      
+            return False
+
+        if set(["1","1,2","1,3","1,2,3"])==set(configs_table['active_rules']): #No exact sollution
+            return False
+
+        if set(["1","2","1,3","2,3"])==set(configs_table['active_rules']): #No exact sollution
+            return False
+
+        if set(["2","3","1,2","1,3"])==set(configs_table['active_rules']): #No exact sollution
+            return False
+
+        if set(["1","1,2","1,3"])==set(configs_table['active_rules']): #Exact sollution
+            coefficients=self.calculate_coefficients(["1","1,2","1,3"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+            B1=coefficients[2]
+            B0=coefficients[3]
+            C1=coefficients[4]
+            C0=coefficients[5]          
+
+            exact_sollution=True
+
+            aux_a=np.float64(A0)/(A0+A1)
+            if A0+A1==0:
+                aux_a=0.5
+
+            aux_b=np.float64(A1*B0-A0*B1)/(A1*B0+A1*B1)
+
+            aux_c=np.float64(A1*C0-A0*C1)/(A1*C0+A1*C1)
+
+            if A1*B0+A1*B1==0 and A1*C0+A1*C1==0:
+                if A1==0:
+                    if B0==0 and B1==0:
+                        aux_b=0.5
+                    if B0==0 and B1!=0:
+                        aux_b=0.0
+                    if B0!=0 and B1==0:
+                        aux_b=1.0
+                    if B0!=0 and B1!=0:                       
+                        aux_b=B0/(B0+B1)
+                        if exact_sollution==True:
+                            exact_sollution=False
+
+                    if C0==0 and C1==0:
+                        aux_c=0.5
+                    if C0==0 and C1!=0:
+                        aux_c=0.0
+                    if C0!=0 and C1==0:
+                        aux_c=1.0
+                    if C0!=0 and C1!=0:                       
+                        aux_c=B0/(C0+C1)
+                        if exact_sollution==True:
+                            exact_sollution=False
+
+                else:# -> B0=B1=C0=C1=0
+                    aux_b=0.5
+                    aux_c=0.5
+
+            if A1*B0+A1*B1==0 and A1*C0+A1*C1!=0:# -> B0=B1=0
+                aux_b=0.5
+
+            if A1*B0+A1*B1!=0 and A1*C0+A1*C1==0:# -> C0=C1=0
+                aux_c=0.5
+
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+            probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
+            probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3    
+
+            if not exact_sollution:
+                return False
+
+            return probabilities_list
+
+        #Combinations of 4 rules
+        if set(["1","2","3","4"])==set(configs_table['active_rules']): #Exact sollution
+            coefficients=self.calculate_coefficients(["1","2","3","4"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+            B1=coefficients[2]
+            B0=coefficients[3]
+            C1=coefficients[4]
+            C0=coefficients[5]    
+            D1=coefficients[6]
+            D0=coefficients[7]   
+
+            aux_a=np.float64(A0)/(A0+A1) 
+            if A0+A1==0:
+                aux_a=0.5
+            
+            aux_b=np.float64(B0)/(B0+B1) 
+            if B0+B1==0:
+                aux_b=0.5           
+
+            aux_c=np.float64(C0)/(C0+C1)
+            if C0+C1==0:
+                aux_c=0.5 
+
+            aux_d=np.float64(D0)/(D0+D1)
+            if D0+D1==0:
+                aux_d=0.5 
+
+            probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+            probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
+            probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3  
+            probabilities_list[3]=max(min(aux_d,0.999),0.001) #r4
+
+            return probabilities_list
+
+        return False  
+
+    def calculate_coefficients(self,head,pattern_list):
+
+        configs_table = self.configs_tables[head]
+        coefficients=[]
+        for i, i_element in enumerate(pattern_list):
+            coeffcients.extend([0.0,0.0])
+            coefficients[2*i]=configs_table.loc[configs_table['active_rules']==i_element and configs_table[head]==0,'count'].sum(axis=1)
+            coefficients[2*i+1]=configs_table.loc[configs_table['active_rules']==i_element and configs_table[head]==1,'count'].sum(axis=1)
+
+        #print "                coefficents=",coefficients
+        return coefficients
