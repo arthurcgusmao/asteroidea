@@ -412,14 +412,18 @@ class Plp(object):
         number of structures. If for the given structure it is not possible to
         find the optimal paramters using this method, returns False.
         """
+        print (self.configs_tables[head])
         configs_table = self.configs_tables[head]
-        rules_combinations = set(configs_table['active_rules'].tolist())
+        rules_combinations = set(configs_table['active_rules'].tolist())-set([""])
+        probabilities_list=[0.0]*len(configs_table['active_rules'].tolist())
 
         #Combinations of 1 rule
-        if set(["1"])==rules_combinations: #Exact sollution
-            A1=configs_table.loc[configs_table[head]==0,'count'].sum(axis=1)
-            A0=configs_table.loc[configs_table[head]==1,'count'].sum(axis=1)
-
+        if set(["0"])==rules_combinations: #Exact sollution
+            coefficients=self.calculate_coefficients(head,["0"])
+            A1=coefficients[0]
+            A0=coefficients[1]
+            print ("A0=",A0)
+            print ("A1=",A1)            
             aux_a=np.float64(A0)/(A0+A1)
             if A0+A1==0:
                 aux_a=0.5
@@ -428,13 +432,16 @@ class Plp(object):
             return probabilities_list
 
         #Combinations of 2 rules
-        if set(["1","2"])==rules_combinations: #Exact sollution
-            coefficients=self.calculate_coefficients(["1","2"])
+        if set(["0","1"])==rules_combinations: #Exact sollution
+            coefficients=self.calculate_coefficients(head,["0","1"])
             A1=coefficients[0]
             A0=coefficients[1]
             B1=coefficients[2]
             B0=coefficients[3] 
-
+            print ("A0=",A0)
+            print ("A1=",A1) 
+            print ("B0=",B0)
+            print ("B1=",B1) 
             aux_a=np.float64(A0)/(A0+A1)
             if A0+A1==0:
                 aux_a=0.5
@@ -448,11 +455,12 @@ class Plp(object):
 
             return probabilities_list
 
-        if set(["1","1,2"])==rules_combinations: #Exact sollution
-            coefficients=self.calculate_coefficients(["1","1,2"])
+        if set(["0","0,1"])==rules_combinations: #Exact sollution
+            coefficients=self.calculate_coefficients(head,["0","0,1"])
             A1=coefficients[0]
             A0=coefficients[1]
             B1=coefficients[2]
+            B0=coefficients[3]
 
             exact_sollution=True  
 
@@ -483,6 +491,11 @@ class Plp(object):
                     if B0==0 and B1==0:
                         aux_b=0.5
 
+            print ("A0=",A0)
+            print ("A1=",A1) 
+            print ("B0=",B0)
+            print ("B1=",B1) 
+
             probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
             probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2  
 
@@ -491,12 +504,12 @@ class Plp(object):
 
             return probabilities_list
 
-        if set(["1","2","1,2"])==rules_combinations: #No exact sollution
+        if set(["0","1","0,1"])==rules_combinations: #No exact sollution
             return False
 
         #Combinations of 3 rules
-        if set(["1","2","3"])==rules_combinations: #Exact sollution
-            coefficients=self.calculate_coefficients(["1","2","3"])
+        if set(["0","1","2"])==rules_combinations: #Exact sollution
+            coefficients=self.calculate_coefficients(head,["0","1","2"])
             A1=coefficients[0]
             A0=coefficients[1]
             B1=coefficients[2]
@@ -516,26 +529,33 @@ class Plp(object):
             if C0+C1==0:
                 aux_c=0.5
 
+            print ("A0=",A0)
+            print ("A1=",A1) 
+            print ("B0=",B0)
+            print ("B1=",B1) 
+            print ("C0=",C0)
+            print ("C1=",C1) 
+
             probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
             probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
             probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3         
         
             return probabilities_list
 
-        if set(["1","2","1,2","3"])==rules_combinations: #No exact sollution      
+        if set(["0","1","0,1","2"])==rules_combinations: #No exact sollution      
             return False
 
-        if set(["1","1,2","1,3","1,2,3"])==rules_combinations: #No exact sollution
+        if set(["0","0,1","0,2","0,1,2"])==rules_combinations: #No exact sollution
             return False
 
-        if set(["1","2","1,3","2,3"])==rules_combinations: #No exact sollution
+        if set(["0","1","0,2","1,2"])==rules_combinations: #No exact sollution
             return False
 
-        if set(["2","3","1,2","1,3"])==rules_combinations: #No exact sollution
+        if set(["1","2","0,1","0,2"])==rules_combinations: #No exact sollution
             return False
 
-        if set(["1","1,2","1,3"])==rules_combinations: #Exact sollution
-            coefficients=self.calculate_coefficients(["1","1,2","1,3"])
+        if set(["0","0,1","0,2"])==rules_combinations: #Exact sollution
+            coefficients=self.calculate_coefficients(head,["0","0,1","0,2"])
             A1=coefficients[0]
             A0=coefficients[1]
             B1=coefficients[2]
@@ -587,6 +607,13 @@ class Plp(object):
             if A1*B0+A1*B1!=0 and A1*C0+A1*C1==0:# -> C0=C1=0
                 aux_c=0.5
 
+            print ("A0=",A0)
+            print ("A1=",A1) 
+            print ("B0=",B0)
+            print ("B1=",B1) 
+            print ("C0=",C0)
+            print ("C1=",C1) 
+
             probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
             probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
             probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3    
@@ -597,8 +624,8 @@ class Plp(object):
             return probabilities_list
 
         #Combinations of 4 rules
-        if set(["1","2","3","4"])==rules_combinations: #Exact sollution
-            coefficients=self.calculate_coefficients(["1","2","3","4"])
+        if set(["0","1","2","3"])==rules_combinations: #Exact sollution
+            coefficients=self.calculate_coefficients(head,["0","1","2","3"])
             A1=coefficients[0]
             A0=coefficients[1]
             B1=coefficients[2]
@@ -624,6 +651,15 @@ class Plp(object):
             if D0+D1==0:
                 aux_d=0.5 
 
+            print ("A0=",A0)
+            print ("A1=",A1) 
+            print ("B0=",B0)
+            print ("B1=",B1) 
+            print ("C0=",C0)
+            print ("C1=",C1) 
+            print ("C0=",C0)
+            print ("C1=",C1) 
+
             probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
             probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
             probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3  
@@ -638,9 +674,12 @@ class Plp(object):
         configs_table = self.configs_tables[head]
         coefficients=[]
         for i, i_element in enumerate(pattern_list):
-            coeffcients.extend([0.0,0.0])
-            coefficients[2*i]=configs_table.loc[configs_table['active_rules']==i_element and configs_table[head]==0,'count'].sum(axis=1)
-            coefficients[2*i+1]=configs_table.loc[configs_table['active_rules']==i_element and configs_table[head]==1,'count'].sum(axis=1)
-
+            coefficients.extend([0.0,0.0])
+            aux=configs_table[configs_table['active_rules']==i_element]
+            aux=aux[aux[head]==0]['count']
+            coefficients[2*i]=aux.sum()
+            aux=configs_table[configs_table['active_rules']==i_element]
+            aux=aux[aux[head]==1]['count']
+            coefficients[2*i+1]=aux.sum()
         #print "                coefficents=",coefficients
         return coefficients
