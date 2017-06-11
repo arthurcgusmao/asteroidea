@@ -43,15 +43,18 @@ class Inference(object):
         """
         # change model weights
         custom_weights = {}
-        for x in self.problog_knowledge_sr.get_weights().values():
+        custom_weights_items = {}
+        xs = self.problog_knowledge_sr.get_weights().values()
+        for x in xs:
             if getattr(x, "functor", None):
-                for head in model:
-                    rules = model[head]['rules']
-                    for i, rule in enumerate(rules):
-                        if x.functor == rule['parameter_name']:
-                            custom_weights[x] = rule['parameter']
+                custom_weights_items[x.functor] = x
+        for head in model:
+            rules = model[head]['rules']
+            for i, rule in enumerate(rules):
+                x = custom_weights_items[rule['parameter_name']]
+                custom_weights[x] = rule['parameter']
 
-        # change evidence
+        # change evidence (and weights in case evidence is probabilistic)
         evidence_dict = {}
         for var, value in evidence.iteritems():
             term = Term(var)
@@ -59,7 +62,23 @@ class Inference(object):
                 evidence_dict[term] = True
             if value == 0:
                 evidence_dict[term] = False
-
+            # MANAGING PROBABILISTIC CASE
+            # initialize all probability dumb variables custom weights
+            x_0 = custom_weights_items[model[var]['prob_dumb']['weight_0']]
+            x_1 = custom_weights_items[model[var]['prob_dumb']['weight_1']]
+            custom_weights[x_1] = 0.5
+            custom_weights[x_0] = 0.5
+            if value > 0 and value < 1:
+                # if observation is probabilistic, insert evidence for dumb var
+                prob_term = Term(model[var]['prob_dumb']['var'])
+                evidence_dict[prob_term] = True
+                # and weights for probabilistic dumb rules
+                custom_weights[x_1] = value
+                custom_weights[x_0] = 1 - value
+                
+        print('evidence_dict:::', evidence_dict)
+        print('custom_weights:::', custom_weights)
+        
         # make inference
         try:
             res = self.problog_knowledge_sr.evaluate(
