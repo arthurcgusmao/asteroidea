@@ -12,11 +12,15 @@ from scipy.optimize import basinhopping, minimize
 class Learner(object):
 
     def __init__(self, structure_filepath):
+        self.info = {'df': None,
+                     'time_log': {}}
+        self._log_time('Building models', start=True)
+        
         self.model = parser.read_structure(structure_filepath)
         self.configs_tables = parser.build_configs_tables(self.model)
         problog_model_str = parser.build_problog_model_str(self.model, self.configs_tables)
         self.knowledge = Inference(problog_model_str)
-
+        
     
     def learn_parameters(self, dataset, epsilon=0.01):
         """Find the (exact or approximated) optimal parameters for the dataset.
@@ -27,6 +31,7 @@ class Learner(object):
         epsilon -- stopping criteria
         Missing values in the dataset should be represented as NaN.
         """
+        self._log_time('Others')
         model = self.model
         configs_tables = self.configs_tables
         # ensure dataset is a pandas dataframe
@@ -45,7 +50,8 @@ class Learner(object):
         while True:
             ll = 0
             new_params = {}
-            
+
+            self._log_time('E step')
             ### E step ###
             for head in model:
                 # reset configurations tables
@@ -58,6 +64,7 @@ class Learner(object):
                         update_in_count = res[config['dumb_var']]
                         configs_table.loc[c, 'count'] += update_in_count
 
+            self._log_time('M step')
             ### M step ###
             for head in model:
                 rules = model[head]['rules']
@@ -83,7 +90,8 @@ class Learner(object):
                 ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table)
                 # store new parameters
                 new_params[head] = optimal_params
-                
+
+            self._log_time('Others')
             # update parameters of the model
             for head in model:
                 rules = model[head]['rules']
@@ -128,7 +136,16 @@ class Learner(object):
                 for rule in self.model[head]['rules']:
                     columns.append(rule['clause_string'])
             columns.extend(['Elapsed Time', 'Log-Likelihood'])
-            self.learn_parameters_info = pd.DataFrame(self._learning_data,
-                                                      columns=columns)
+            self.info['df'] = pd.DataFrame(self._learning_data,
+                                           columns=columns)
 
             
+    def _log_time(self, activity, start=False):
+        if not start:
+            last_activity = self._log_time__last_activity
+            last_time = self._log_time__last_time
+            if not last_activity in self.info['time_log']:
+                self.info['time_log'][last_activity] = 0
+            self.info['time_log'][last_activity] += time.time() - last_time
+        self._log_time__last_activity = activity
+        self._log_time__last_time = time.time()
