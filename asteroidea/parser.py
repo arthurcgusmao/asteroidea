@@ -23,6 +23,9 @@ def read_structure(filepath):
     model = {}
     temp_file = open(filepath, 'r+')
     for i, line in enumerate(temp_file):
+        # comment syntax
+        if '%' in line:
+            continue
         # remove whitespace and end of line
         line = line.replace(' ', '').replace('.\n', '')
         # parse line
