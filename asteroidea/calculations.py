@@ -44,17 +44,7 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
 
 
 def log_likelihood(model, configs_tables, sign=1):
-    """Returns the expected-value of the log-likelihood of a head variable
-    given its parents, for all possible configurations the examples of a
-    dataset can take. In other words, it is the function that the M step
-    tries to maximize in the EM cycle. It is implict that the model and the
-    dataset are given, and that the appropriated calculations in
-    self.configs_tables[head] were made.
-    Keyword arguments:
-    parameters -- the parameters for the set of rules which head is head
-    head -- the variable that is head of the rules
-    sign -- sign of the output. Default is 1.0, use -1.0 for
-            minus-log-likelihood
+    """Returns the expected-value of the log-likelihood of the whole model.
     """
     ll = 0
     for head in model:
