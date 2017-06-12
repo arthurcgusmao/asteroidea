@@ -46,13 +46,12 @@ class Learner(object):
 
         # begin EM cycle
         old_ll = None
-        self._update_learning_info(np.nan, begin_em=True)
         while True:
             ll = 0
             new_params = {}
 
-            self._log_time('E step')
             ### E step ###
+            self._log_time('E step')
             for head in model:
                 # reset configurations tables
                 self.configs_tables[head].loc[:, 'count'] = 0
@@ -64,8 +63,13 @@ class Learner(object):
                         update_in_count = res[config['dumb_var']]
                         configs_table.loc[c, 'count'] += update_in_count
 
-            self._log_time('M step')
+            ### updating the initial ll value in learning info ###
+            if old_ll == None:
+                old_ll = calculations.log_likelihood(model, configs_tables)
+                self._update_learning_info(old_ll, begin_em=True)
+
             ### M step ###
+            self._log_time('M step')
             for head in model:
                 rules = model[head]['rules']
                 configs_table = configs_tables[head]
@@ -98,10 +102,9 @@ class Learner(object):
                 for i, rule in enumerate(rules):
                     rules[i]['parameter'] = new_params[head][i]
             # EM cycle stopping criteria
-            if old_ll != None:
-                if abs((ll - old_ll) / ll) < epsilon:
-                    learning_info = self._update_learning_info(ll, end_em=True)
-                    break
+            if abs((ll - old_ll) / ll) < epsilon:
+                learning_info = self._update_learning_info(ll, end_em=True)
+                break
             old_ll = ll
             # update data about iterations
             self._update_learning_info(ll)
@@ -149,3 +152,8 @@ class Learner(object):
             self.info['time_log'][last_activity] += time.time() - last_time
         self._log_time__last_activity = activity
         self._log_time__last_time = time.time()
+
+
+    # def log_iteration(self, configs_tables):
+        
+    

@@ -76,8 +76,8 @@ class Inference(object):
                 custom_weights[x_1] = value
                 custom_weights[x_0] = 1 - value
                 
-        print('evidence_dict:::', evidence_dict)
-        print('custom_weights:::', custom_weights)
+        # print('\nevidence_dict:::\n', evidence_dict)
+        # print('\n\ncustom_weights:::\n', custom_weights)
         
         # make inference
         try:
