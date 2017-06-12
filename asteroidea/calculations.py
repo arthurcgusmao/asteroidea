@@ -72,13 +72,13 @@ def exact_optimization(head, configs_table):
     number of structures. If for the given structure it is not possible to
     find the optimal paramters using this method, returns False.
     """
-    return False
+    # return False
     # print(configs_table)
     rules_combinations = set(configs_table['active_rules'].tolist()) - set([""])
-    probabilities_list=[0.0]*len(configs_table['active_rules'].tolist())
 
     #Combinations of 1 rule
     if set(["0"])==rules_combinations: #Exact sollution
+        probabilities_list=[0.0]
         coefficients=calculate_coefficients(head, configs_table,["0"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -93,6 +93,7 @@ def exact_optimization(head, configs_table):
 
     #Combinations of 2 rules
     if set(["0","1"])==rules_combinations: #Exact sollution
+        probabilities_list=[0.0]*2
         coefficients=calculate_coefficients(head, configs_table,["0","1"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -116,6 +117,7 @@ def exact_optimization(head, configs_table):
         return probabilities_list
 
     if set(["0","0,1"])==rules_combinations: #Exact sollution
+        probabilities_list=[0.0]*2
         coefficients=calculate_coefficients(head, configs_table,["0","0,1"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -169,6 +171,7 @@ def exact_optimization(head, configs_table):
 
     #Combinations of 3 rules
     if set(["0","1","2"])==rules_combinations: #Exact sollution
+        probabilities_list=[0.0]*3
         coefficients=calculate_coefficients(head, configs_table,["0","1","2"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -215,6 +218,7 @@ def exact_optimization(head, configs_table):
         return False
 
     if set(["0","0,1","0,2"])==rules_combinations: #Exact sollution
+        probabilities_list=[0.0]*3
         coefficients=calculate_coefficients(head, configs_table,["0","0,1","0,2"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -285,6 +289,7 @@ def exact_optimization(head, configs_table):
 
     #Combinations of 4 rules
     if set(["0","1","2","3"])==rules_combinations: #Exact sollution
+        probabilities_list=[0.0]*4
         coefficients=calculate_coefficients(head, configs_table,["0","1","2","3"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -328,6 +333,7 @@ def exact_optimization(head, configs_table):
         return probabilities_list
 
     return False  
+  
 
 
 def calculate_coefficients(head, configs_table, pattern_list):
