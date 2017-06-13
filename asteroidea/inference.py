@@ -35,26 +35,31 @@ class Inference(object):
         self.probabilistic_data = probabilistic_data
 
         
-    def eval(self, model, evidence=pd.Series()):
+    def update_weights(self, model):
+        """Updates the weights of the model."""
+        # change model weights
+        self.model = model
+        self.custom_weights = {}
+        self.custom_weights_items = {}
+        xs = self.problog_knowledge_sr.get_weights().values()
+        for x in xs:
+            if getattr(x, "functor", None):
+                self.custom_weights_items[x.functor] = x
+        for head in model:
+            rules = model[head]['rules']
+            for i, rule in enumerate(rules):
+                x = self.custom_weights_items[rule['parameter_name']]
+                self.custom_weights[x] = rule['parameter']
+        
+    
+    def eval(self, evidence=pd.Series()):
         """Returns the query for all configurations of all head variables
         in the model, given the evidence.
 
         Keyword arguments:
         evidence
         """
-        # change model weights
-        custom_weights = {}
-        custom_weights_items = {}
-        xs = self.problog_knowledge_sr.get_weights().values()
-        for x in xs:
-            if getattr(x, "functor", None):
-                custom_weights_items[x.functor] = x
-        for head in model:
-            rules = model[head]['rules']
-            for i, rule in enumerate(rules):
-                x = custom_weights_items[rule['parameter_name']]
-                custom_weights[x] = rule['parameter']
-
+        model = self.model
         # change evidence (and weights in case evidence is probabilistic)
         evidence_dict = {}
         for var, value in evidence.iteritems():
@@ -66,27 +71,27 @@ class Inference(object):
             # MANAGING PROBABILISTIC CASE
             if self.probabilistic_data:
                 # initialize all probability dumb variables custom weights
-                x_0 = custom_weights_items[model[var]['prob_dumb']['weight_0']]
-                x_1 = custom_weights_items[model[var]['prob_dumb']['weight_1']]
-                custom_weights[x_1] = 0.5
-                custom_weights[x_0] = 0.5
+                x_0 = self.custom_weights_items[model[var]['prob_dumb']['weight_0']]
+                x_1 = self.custom_weights_items[model[var]['prob_dumb']['weight_1']]
+                self.custom_weights[x_1] = 0.5
+                self.custom_weights[x_0] = 0.5
                 if value > 0 and value < 1:
                     # if observation is probabilistic, insert evidence for dumb var
                     prob_term = Term(model[var]['prob_dumb']['var'])
                     evidence_dict[prob_term] = True
                     # and weights for probabilistic dumb rules
-                    custom_weights[x_1] = value
-                    custom_weights[x_0] = 1 - value
+                    self.custom_weights[x_1] = value
+                    self.custom_weights[x_0] = 1 - value
                 
         # print('\nevidence_dict:::\n', evidence_dict)
-        # print('\n\ncustom_weights:::\n', custom_weights)
+        # print('\n\nself.custom_weights:::\n', self.custom_weights)
         
         # make inference
         try:
             res = self.problog_knowledge_sr.evaluate(
                         evidence=evidence_dict,
                         keep_evidence=False,
-                        semiring=CustomSemiring(custom_weights)),
+                        semiring=CustomSemiring(self.custom_weights)),
             output = {}
             for key in res[0]:
                 output[str(key)] = res[0][key]

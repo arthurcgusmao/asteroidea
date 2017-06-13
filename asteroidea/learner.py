@@ -11,19 +11,23 @@ from scipy.optimize import basinhopping, minimize
     
 class Learner(object):
 
-    def __init__(self, structure_filepath, probabilistic_data=False):
+    def __init__(self, structure_filepath,
+                 probabilistic_data=False, sampling=False):
         self.info = {'df': None,
                      'time_log': {}}
         self._log_time('Building models', start=True)
         
         self.model = parser.read_structure(structure_filepath)
         self.configs_tables = parser.build_configs_tables(self.model)
-        problog_model_str = parser.build_problog_model_str(
+        self.problog_model_str = parser.build_problog_model_str(
                                         self.model, self.configs_tables,
                                         probabilistic_data=probabilistic_data)
-        self.knowledge = Inference(problog_model_str,
-                                   probabilistic_data=probabilistic_data)
-        
+        self.sampling = sampling
+        if not sampling:
+            self.knowledge = Inference(self.problog_model_str,
+                                       probabilistic_data=probabilistic_data)
+        else:
+            print('not implemented.')
     
     def learn_parameters(self, dataset, epsilon=0.01):
         """Find the (exact or approximated) optimal parameters for the dataset.
@@ -58,8 +62,13 @@ class Learner(object):
             for head in model:
                 # reset configurations tables
                 self.configs_tables[head].loc[:, 'count'] = 0
+            self.knowledge.update_weights(model)
             for i, row in dataset.iterrows():
-                res = self.knowledge.eval(model=model, evidence=row)
+                if not self.sampling:
+                    res = self.knowledge.eval(evidence=row)
+                else:
+                    res = 0
+                    print('not implemented.')
                 for head in configs_tables:
                     configs_table = configs_tables[head]
                     for c, config in configs_table.iterrows():
