@@ -123,7 +123,8 @@ def build_configs_tables(model):
     return configs_tables
 
 
-def build_problog_model_str(model, configs_tables, probabilistic_data=False):
+def build_problog_model_str(model, configs_tables, probabilistic_data=False,
+                            suppress_evidences=False):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -135,6 +136,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False):
     model_str = ''
     rules_str = ''
     prob_str = ''
+    configs_str = ''
     evidences_str = ''
     queries_str = ''
         
@@ -152,14 +154,16 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False):
             prob_dumb_weight_1 = model[head]['prob_dumb']['weight_1']
             prob_str += prob_dumb_weight_0 +'::'+ prob_dumb_var +':-\+'+ head +'.\n'
             prob_str += prob_dumb_weight_1 +'::'+ prob_dumb_var +':-'+ head +'.\n'
-            prob_str += 'evidence('+ prob_dumb_var +', true).\n'
+            if not suppress_evidences:
+                evidences_str += 'evidence('+ prob_dumb_var +', true).\n'
         # add evidence and query -- all variables should be
         # evidence/queries because only then we can avoid recompiling
         # the model for different evidences/queries. There is no
         # problem in setting every evidence to true because later these
         # values are discarded.
         # evidence:
-        evidences_str += "evidence(%s, true).\n" % head
+        if not suppress_evidences:
+            evidences_str += "evidence(%s, true).\n" % head
         # queries (each configuration is a query):
         configs_table = configs_tables[head]
         config_vars = [head]
@@ -168,14 +172,16 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False):
         for c, config in configs_table.iterrows():
             query = config.filter(items=config_vars)
             config_dumb_var = configs_table.loc[c,:]['dumb_var']
-            queries_str += config_dumb_var + ':-'
+            configs_str += config_dumb_var + ':-'
             for var, value in query.iteritems():
                 if value == 1:
-                    queries_str += "%s," % var
+                    configs_str += "%s," % var
                 if value == 0:
-                    queries_str += "\+%s," % var
-            queries_str = queries_str[:-1]
-            queries_str += '.\n'
+                    configs_str += "\+%s," % var
+            configs_str = configs_str[:-1]
+            configs_str += '.\n'
             queries_str += "query(%s).\n" % config_dumb_var
-    model_str += rules_str + prob_str + evidences_str + queries_str
+    model_str += rules_str + configs_str + prob_str + queries_str
+    if not suppress_evidences:
+        model_str += evidences_str
     return model_str
