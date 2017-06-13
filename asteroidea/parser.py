@@ -123,7 +123,7 @@ def build_configs_tables(model):
     return configs_tables
 
 
-def build_problog_model_str(model, configs_tables):
+def build_problog_model_str(model, configs_tables, probabilistic_data=False):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -146,11 +146,13 @@ def build_problog_model_str(model, configs_tables):
         for i, rule in enumerate(rules):
             rules_str += rule['parameter_name'] + '::' + rule['clause_string'] + '.\n'
         # add probabilistic observations string
-        prob_dumb_var = model[head]['prob_dumb']['var']
-        prob_dumb_weight_0 = model[head]['prob_dumb']['weight_0']
-        prob_dumb_weight_1 = model[head]['prob_dumb']['weight_1']
-        prob_str += prob_dumb_weight_0 +'::'+ prob_dumb_var +':-\+'+ head +'.\n'
-        prob_str += prob_dumb_weight_1 +'::'+ prob_dumb_var +':-'+ head +'.\n'
+        if probabilistic_data:
+            prob_dumb_var = model[head]['prob_dumb']['var']
+            prob_dumb_weight_0 = model[head]['prob_dumb']['weight_0']
+            prob_dumb_weight_1 = model[head]['prob_dumb']['weight_1']
+            prob_str += prob_dumb_weight_0 +'::'+ prob_dumb_var +':-\+'+ head +'.\n'
+            prob_str += prob_dumb_weight_1 +'::'+ prob_dumb_var +':-'+ head +'.\n'
+            prob_str += 'evidence('+ prob_dumb_var +', true).\n'
         # add evidence and query -- all variables should be
         # evidence/queries because only then we can avoid recompiling
         # the model for different evidences/queries. There is no
@@ -158,7 +160,6 @@ def build_problog_model_str(model, configs_tables):
         # values are discarded.
         # evidence:
         evidences_str += "evidence(%s, true).\n" % head
-        evidences_str += 'evidence('+ prob_dumb_var +', true).\n'
         # queries (each configuration is a query):
         configs_table = configs_tables[head]
         config_vars = [head]

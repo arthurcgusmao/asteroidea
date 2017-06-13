@@ -11,15 +11,18 @@ from scipy.optimize import basinhopping, minimize
     
 class Learner(object):
 
-    def __init__(self, structure_filepath):
+    def __init__(self, structure_filepath, probabilistic_data=False):
         self.info = {'df': None,
                      'time_log': {}}
         self._log_time('Building models', start=True)
         
         self.model = parser.read_structure(structure_filepath)
         self.configs_tables = parser.build_configs_tables(self.model)
-        problog_model_str = parser.build_problog_model_str(self.model, self.configs_tables)
-        self.knowledge = Inference(problog_model_str)
+        problog_model_str = parser.build_problog_model_str(
+                                        self.model, self.configs_tables,
+                                        probabilistic_data=probabilistic_data)
+        self.knowledge = Inference(problog_model_str,
+                                   probabilistic_data=probabilistic_data)
         
     
     def learn_parameters(self, dataset, epsilon=0.01):
