@@ -20,15 +20,16 @@ class Learner(object):
         self.model = parser.read_structure(structure_filepath)
         self.configs_tables = parser.build_configs_tables(self.model)
         self.problog_model_str = parser.build_problog_model_str(
-                                        self.model, self.configs_tables,
-                                        probabilistic_data=probabilistic_data)
-        self.sampling = sampling
-        if not sampling:
+                                    self.model, self.configs_tables,
+                                    probabilistic_data=probabilistic_data,
+                                    suppress_evidences=sampling)
+        if sampling:
+            print('not implemented.')
+        else:
             self.knowledge = Inference(self.problog_model_str,
                                        probabilistic_data=probabilistic_data)
-        else:
-            print('not implemented.')
-    
+
+            
     def learn_parameters(self, dataset, epsilon=0.01):
         """Find the (exact or approximated) optimal parameters for the dataset.
         Before running this function, make sure you have read a structure file
@@ -64,11 +65,7 @@ class Learner(object):
                 self.configs_tables[head].loc[:, 'count'] = 0
             self.knowledge.update_weights(model)
             for i, row in dataset.iterrows():
-                if not self.sampling:
-                    res = self.knowledge.eval(evidence=row)
-                else:
-                    res = 0
-                    print('not implemented.')
+                res = self.knowledge.eval(evidence=row)
                 for head in configs_tables:
                     configs_table = configs_tables[head]
                     for c, config in configs_table.iterrows():
@@ -164,8 +161,3 @@ class Learner(object):
             self.info['time_log'][last_activity] += time.time() - last_time
         self._log_time__last_activity = activity
         self._log_time__last_time = time.time()
-
-
-    # def log_iteration(self, configs_tables):
-        
-    

@@ -37,7 +37,6 @@ class Inference(object):
         
     def update_weights(self, model):
         """Updates the weights of the model."""
-        # change model weights
         self.model = model
         self.custom_weights = {}
         self.custom_weights_items = {}
@@ -95,7 +94,6 @@ class Inference(object):
             output = {}
             for key in res[0]:
                 output[str(key)] = res[0][key]
-                # output = res[0]
         except InconsistentEvidenceError:
             raise InconsistentEvidenceError("""This error may have occured
                 because some observation in the dataset is impossible given
