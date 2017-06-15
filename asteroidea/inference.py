@@ -40,6 +40,7 @@ class Inference(object):
         self.model = model
         self.custom_weights = {}
         self.custom_weights_items = {}
+        print(self.problog_knowledge_sr.get_weights())
         xs = self.problog_knowledge_sr.get_weights().values()
         for x in xs:
             if getattr(x, "functor", None):
@@ -47,8 +48,9 @@ class Inference(object):
         for head in model:
             rules = model[head]['rules']
             for i, rule in enumerate(rules):
-                x = self.custom_weights_items[rule['parameter_name']]
-                self.custom_weights[x] = rule['parameter']
+                if rule['parameter_name'] in self.custom_weights_items.keys():
+                    x = self.custom_weights_items[rule['parameter_name']]
+                    self.custom_weights[x] = rule['parameter']
         
     
     def eval(self, evidence=pd.Series()):

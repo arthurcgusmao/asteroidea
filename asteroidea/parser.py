@@ -49,7 +49,8 @@ def read_structure(filepath):
                            'parents': set()}
             param_index = 0
         # generate parameter name
-        param_name = 'theta_' + head + '_' + str(param_index)
+        predicate, _ = parse_relational_var(head)
+        param_name = 'theta_' + predicate + '_' + str(param_index)
         param_index += 1
         model[head]['rules'].append({'parameter': float(parameter),
                                      'parameter_name': param_name,
@@ -63,7 +64,8 @@ def read_structure(filepath):
         dumb_var = 'y'
         while dumb_var in model.keys():
             dumb_var += dumb_var
-        prob_dumb_var = dumb_var +'_'+ head
+        predicate, _ = parse_relational_var(head)
+        prob_dumb_var = dumb_var +'_'+ predicate
         model[head]['prob_dumb'] = {
             'var': prob_dumb_var,
             'weight_0': 'theta_' + prob_dumb_var +'_0',
@@ -118,13 +120,15 @@ def build_configs_tables(model):
             if len(active_rules) == 0:
                 df.loc[c, 'likelihood'] = 1 - config[head]
             # generate dumb_var names
-            df.loc[c, 'dumb_var'] = dumb_var + '_' + head + '_' + str(c)
+            predicate, _  = parse_relational_var(head)
+            df.loc[c, 'dumb_var'] = dumb_var + '_' + predicate + '_' + str(c)
         configs_tables[head] = df
     return configs_tables
 
 
 def build_problog_model_str(model, configs_tables, probabilistic_data=False,
-                            suppress_evidences=False):
+                            suppress_evidences=False, relational_data=False,
+                            dataset_filepath=None):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -139,7 +143,9 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     configs_str = ''
     evidences_str = ''
     queries_str = ''
-        
+
+    dataset_str, constants = parse_relational_dataset(dataset_filepath)
+    
     for head in model:
         # add clauses -- we use a variable named theta_head_index to
         # change the model's parameters dinamically
@@ -169,19 +175,79 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
         config_vars = [head]
         for parent in parents:
             config_vars.append(parent)
+        # @TODO: create if statement -- substitutions must be made only when
+        # dealing with relational data
+        substitutions = generate_substitutions(config_vars, constants)
         for c, config in configs_table.iterrows():
             query = config.filter(items=config_vars)
-            config_dumb_var = configs_table.loc[c,:]['dumb_var']
-            configs_str += config_dumb_var + ':-'
-            for var, value in query.iteritems():
-                if value == 1:
-                    configs_str += "%s," % var
-                if value == 0:
-                    configs_str += "\+%s," % var
-            configs_str = configs_str[:-1]
-            configs_str += '.\n'
-            queries_str += "query(%s).\n" % config_dumb_var
+            for s, substitution in enumerate(substitutions):
+                config_dumb_var = configs_table.loc[c,:]['dumb_var'] +'__'+ str(s)
+                configs_str += config_dumb_var + ':-'
+                for var, value in query.iteritems():
+                    predicate, arguments = parse_relational_var(var)
+                    var_str = predicate+'('
+                    for argument in arguments:
+                        var_str += substitution[argument] + ','
+                    var_str = var_str[:-1] + ')'
+                    if value == 1:
+                        configs_str += "%s," % var_str
+                    if value == 0:
+                        configs_str += "\+%s," % var_str
+                configs_str = configs_str[:-1]
+                configs_str += '.\n'
+                queries_str += "query(%s).\n" % config_dumb_var
     model_str += rules_str + configs_str + prob_str + queries_str
     if not suppress_evidences:
         model_str += evidences_str
-    return model_str
+    if relational_data:
+        output = dataset_str + model_str
+    else:
+        output = model_str
+    return output
+
+
+def parse_relational_var(var):
+    if '(' in var:
+        predicate, arguments = var.split('(')
+        arguments = arguments[:-1].split(',')
+    else:
+        predicate = var
+        arguments = []
+    return predicate, arguments
+
+
+def generate_substitutions(atoms, constants):
+    #@TODO: create substitutions with replacement
+    arguments_set = set()
+    for atom in atoms:
+        _, arguments = parse_relational_var(atom)
+        arguments_set = arguments_set.union(set(arguments))
+    substitutions = []
+    combinations = itertools.permutations(constants, len(arguments_set))
+    for combination in combinations:
+        substitution = {}
+        for i, argument in enumerate(arguments_set):
+            # print(argument, combination)
+            substitution[argument] = combination[i]
+        substitutions.append(substitution)
+    return substitutions
+
+    
+def parse_relational_dataset(filepath):
+    constants = set()
+    temp_file = open(filepath, 'r+')
+    # dataset_str = temp_file.read()
+    dataset_str = ''
+    for i, line in enumerate(temp_file):
+        dataset_str += line
+        # comment syntax
+        if '%' in line:
+            continue
+        # remove whitespace and end of line
+        line = line.replace(' ', '').replace('\n', '').replace('.', '')
+        # parse line
+        _, arguments = parse_relational_var(line)
+        constants = constants.union(set(arguments))
+    temp_file.close()
+    return dataset_str, constants
+    
