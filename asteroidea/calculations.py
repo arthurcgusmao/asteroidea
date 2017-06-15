@@ -77,7 +77,7 @@ def exact_optimization(head, configs_table):
         aux_a=np.float64(A0)/(A0+A1)
         if A0+A1==0:
             aux_a=0.5
-        probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
+        probabilities_list[0]=max(min(aux_a,1),0) #r1
 
         return probabilities_list
 
@@ -101,8 +101,8 @@ def exact_optimization(head, configs_table):
         if B0+B1==0:
             aux_b=0.5
 
-        probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
-        probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
+        probabilities_list[0]=max(min(aux_a,1),0) #r1
+        probabilities_list[1]=max(min(aux_b,1),0) #r2
 
         return probabilities_list
 
@@ -148,8 +148,8 @@ def exact_optimization(head, configs_table):
         # print ("B0=",B0)
         # print ("B1=",B1) 
 
-        probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
-        probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2  
+        probabilities_list[0]=max(min(aux_a,1),0) #r1
+        probabilities_list[1]=max(min(aux_b,1),0) #r2  
 
         if not exact_sollution:
             return False
@@ -189,9 +189,9 @@ def exact_optimization(head, configs_table):
         # print ("C0=",C0)
         # print ("C1=",C1) 
 
-        probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
-        probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
-        probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3         
+        probabilities_list[0]=max(min(aux_a,1),0) #r1
+        probabilities_list[1]=max(min(aux_b,1),0) #r2
+        probabilities_list[2]=max(min(aux_c,1),0) #r3         
 
         return probabilities_list
 
@@ -268,9 +268,9 @@ def exact_optimization(head, configs_table):
         # print ("C0=",C0)
         # print ("C1=",C1) 
 
-        probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
-        probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
-        probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3    
+        probabilities_list[0]=max(min(aux_a,1),0) #r1
+        probabilities_list[1]=max(min(aux_b,1),0) #r2
+        probabilities_list[2]=max(min(aux_c,1),0) #r3    
 
         if not exact_sollution:
             return False
@@ -315,10 +315,10 @@ def exact_optimization(head, configs_table):
         # print ("C0=",C0)
         # print ("C1=",C1) 
 
-        probabilities_list[0]=max(min(aux_a,0.999),0.001) #r1
-        probabilities_list[1]=max(min(aux_b,0.999),0.001) #r2
-        probabilities_list[2]=max(min(aux_c,0.999),0.001) #r3  
-        probabilities_list[3]=max(min(aux_d,0.999),0.001) #r4
+        probabilities_list[0]=max(min(aux_a,1),0) #r1
+        probabilities_list[1]=max(min(aux_b,1),0) #r2
+        probabilities_list[2]=max(min(aux_c,1),0) #r3  
+        probabilities_list[3]=max(min(aux_d,1),0) #r4
 
         return probabilities_list
 
