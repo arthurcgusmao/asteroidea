@@ -14,7 +14,8 @@ class Learner(object):
     def __init__(self, structure_filepath,
                  probabilistic_data=False, sampling=False):
         self.info = {'df': None,
-                     'time_log': {}}
+                     'time_log': {},
+                     'no_exact_solution': set()}
         self._log_time('Building models', start=True)
         
         self.model = parser.read_structure(structure_filepath)
@@ -86,7 +87,7 @@ class Learner(object):
                 configs_table = configs_tables[head]
                 optimal_params = calculations.exact_optimization(head, configs_table)
                 if optimal_params == False:
-                    print("Iteration", len(self._learning_data), "had no exact solution for head", head, "bro.")
+                    self.info['no_exact_solution'].add(head)
                     # there is no exact solution, run optimization method
                     initial_guess = []
                     for rule in rules:
