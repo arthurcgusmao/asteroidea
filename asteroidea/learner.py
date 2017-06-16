@@ -54,6 +54,7 @@ class Learner(object):
 
         # begin EM cycle
         old_ll = None
+        self._update_learning_info(np.nan, begin_em=True)
         while True:
             ll = 0
             new_params = {}
@@ -75,7 +76,8 @@ class Learner(object):
             ### updating the initial ll value in learning info ###
             if old_ll == None:
                 old_ll = calculations.log_likelihood(model, configs_tables)
-                self._update_learning_info(old_ll, begin_em=True)
+                # updates the value of the likelihood for the first iteration
+                self._learning_data[0][-1] = old_ll
 
             ### M step ###
             self._log_time('M step')
@@ -94,7 +96,7 @@ class Learner(object):
                             initial_guess,
                             args = (head, model, configs_table, -1.0),
                             method = 'L-BFGS-B',
-                            bounds = [(0.00001, 0.99999)]*len(initial_guess),
+                            bounds = [(0.0, 1.0)]*len(initial_guess),
                             # bounds = [(0.001,0.999)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()

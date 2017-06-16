@@ -39,6 +39,8 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
     # calculate the sum of all log-likelihood * count for table
     output = 0
     for c, config in configs_table[configs_table['count'] > 0].iterrows():
+        if config['likelihood'] <= 0:
+            return sign*float("-inf")
         output += config['count'] * math.log10(config['likelihood'])
     return sign*output
 
