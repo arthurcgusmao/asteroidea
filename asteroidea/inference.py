@@ -40,7 +40,7 @@ class Inference(object):
         self.model = model
         self.custom_weights = {}
         self.custom_weights_items = {}
-        print(self.problog_knowledge_sr.get_weights())
+        # print(self.problog_knowledge_sr.get_weights())
         xs = self.problog_knowledge_sr.get_weights().values()
         for x in xs:
             if getattr(x, "functor", None):
