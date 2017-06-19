@@ -234,17 +234,15 @@ def parse_relational_var(var):
 
 
 def generate_substitutions(atoms, constants):
-    #@TODO: create substitutions with replacement
     arguments_set = set()
     for atom in atoms:
         _, arguments = parse_relational_var(atom)
         arguments_set = arguments_set.union(set(arguments))
     substitutions = []
-    combinations = itertools.permutations(constants, len(arguments_set))
+    combinations = itertools.product(constants, repeat=len(arguments_set))
     for combination in combinations:
         substitution = {}
         for i, argument in enumerate(arguments_set):
-            # print(argument, combination)
             substitution[argument] = combination[i]
         substitutions.append(substitution)
     return substitutions
