@@ -27,10 +27,10 @@ class Learner(object):
         Missing values in the dataset should be represented as NaN.
         """
         self.dataset = dataset
-        self._verify_dataset()
         if relational_data:
             self._update_count_relational()
         else:
+            self._verify_propositional_dataset()
             self._update_count_propositional()
         return self._find_optimal_parameters()
 
@@ -54,8 +54,28 @@ class Learner(object):
                 configs_table.loc[index, 'count'] += 1
 
 
-    def _update_count_relational(self, dataset):
-        print('')
+    def _update_count_relational(self):
+        observations, constants = parser.parse_relational_dataset(self.dataset)
+        for head in self.configs_tables:
+            configs_table = self.configs_tables[head]
+            config_atoms = [head]
+            for parent in self.model[head]['parents']:
+                config_atoms.append(parent)
+
+            substitutions = parser.generate_substitutions(config_atoms, constants)
+            for substitution in substitutions:
+                df = configs_table
+                for atom in config_atoms:
+                    substituted_atom = parser.apply_substitution(atom, substitution)
+                    if substituted_atom in observations:
+                        value = 1
+                    else:
+                        value = 0
+                    df = df.loc[df[atom] == value]
+                # we are left with only one row in the df, which is the right
+                # row where we should increase the count
+                index = df.index.values[0]
+                configs_table.loc[index, 'count'] += 1
 
 
     def _find_optimal_parameters(self):
@@ -90,7 +110,7 @@ class Learner(object):
                 'optimal parameters': new_params}
 
 
-    def _verify_dataset(self):
+    def _verify_propositional_dataset(self):
         # ensure dataset is a pandas dataframe
         if not isinstance(self.dataset, pd.DataFrame):
             raise TypeError('dataset should be a Pandas DataFrame')

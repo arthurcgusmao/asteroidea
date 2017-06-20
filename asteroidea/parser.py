@@ -28,6 +28,9 @@ def read_structure(filepath):
             continue
         # remove whitespace and end of line
         line = line.replace(' ', '').replace('.\n', '')
+        # skip empty lines
+        if line == '':
+            continue
         # parse line
         parameter, clause = line.split('::', 1)
         if ':-' in clause:
@@ -234,6 +237,18 @@ def parse_relational_var(var):
 
 
 def generate_substitutions(atoms, constants):
+    """Generates a list of substitutions, each substitution being a dict where
+    each key is a variable and each value is a possible substitution for that
+    variable.
+
+    For example, in a dataset where the constants are `a` and `b`, the possible
+    substitutions for the atoms `r(X,Y)` and `s(X)` are:
+
+    [{'X': 'a', 'Y': 'a'},
+     {'X': 'a', 'Y': 'b'},
+     {'X': 'b', 'Y': 'a'},
+     {'X': 'b', 'Y': 'b'}]
+    """
     arguments_set = set()
     for atom in atoms:
         _, arguments = parse_relational_var(atom)
@@ -247,11 +262,57 @@ def generate_substitutions(atoms, constants):
         substitutions.append(substitution)
     return substitutions
 
-    
+
+# def apply_substitution(atoms, substitution):
+#     substituted_atoms = []
+#     for atom in atoms:
+#         predicate, arguments = parse_relational_var(atom)
+#         substituted_atom = predicate + "("
+#         for arg in arguments:
+#             substituted_atom += substitution[arg] + ","
+#         substituted_atom = substituted_atom[:-1] + ")"
+#         substituted_atoms.append(substituted_atom)
+#     return substituted_atoms
+def apply_substitution(atom, substitution):
+    predicate, arguments = parse_relational_var(atom)
+    substituted_atom = predicate + "("
+    for arg in arguments:
+        substituted_atom += substitution[arg] + ","
+    substituted_atom = substituted_atom[:-1] + ")"
+    return substituted_atom
+
+
 def parse_relational_dataset(filepath):
+    """Parses a file containing a set of non-probabilistic relational
+    observations. It should have one observation per line, in the form:
+
+    r(a,b).
+    s(a).
+    s(b).
+
+    Everything that is not in the dataset will be considered false.
+    """
     constants = set()
     temp_file = open(filepath, 'r+')
-    # dataset_str = temp_file.read()
+    observations = []
+    for i, line in enumerate(temp_file):
+        # comment syntax
+        if '%' in line:
+            continue
+        # remove whitespace and end of line
+        line = line.replace(' ', '').replace('\n', '').replace('.', '')
+        # store observation
+        observations.append(line)
+        # parse line
+        _, arguments = parse_relational_var(line)
+        constants = constants.union(set(arguments))
+    temp_file.close()
+    return observations, constants
+
+
+def parse_relational_dataset_to_string(filepath):
+    constants = set()
+    temp_file = open(filepath, 'r+')
     dataset_str = ''
     for i, line in enumerate(temp_file):
         dataset_str += line
@@ -265,4 +326,3 @@ def parse_relational_dataset(filepath):
         constants = constants.union(set(arguments))
     temp_file.close()
     return dataset_str, constants
-    
