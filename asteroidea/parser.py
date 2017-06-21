@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
-def read_structure(filepath):
+def read_structure(filepath, relational_data=False):
     """Reads a file containing a structure for the PLP program and returns a
     model dict. The structure should be written accordingly to ProbLog's
     syntax. The structure is stored in a dict called model where each key is
@@ -27,7 +27,7 @@ def read_structure(filepath):
         if '%' in line:
             continue
         # remove whitespace and end of line
-        line = line.replace(' ', '').replace('.\n', '')
+        line = line.replace(' ', '').replace('\n', '').replace('.', '')
         # skip empty lines
         if line == '':
             continue
@@ -35,7 +35,12 @@ def read_structure(filepath):
         parameter, clause = line.split('::', 1)
         if ':-' in clause:
             head, body = clause.split(':-')
-            body = body.split(',')
+            if not relational_data:
+                body = body.split(',')
+            else:
+                body = body.split('),')
+                body = [body_var + ')' for body_var in body]
+                body[-1] = body[-1][:-1]
             body_dict = {}
             for body_var in body:
                 if '\+' in body_var:
@@ -125,12 +130,13 @@ def build_configs_tables(model):
             # generate dumb_var names
             predicate, _  = parse_relational_var(head)
             df.loc[c, 'dumb_var'] = dumb_var + '_' + predicate + '_' + str(c)
+        print(df)
         configs_tables[head] = df
     return configs_tables
 
 
 def build_problog_model_str(model, configs_tables, probabilistic_data=False,
-                            suppress_evidences=False, relational_dataset=None):
+                            suppress_evidences=False, relational_dataset_path=None):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -147,9 +153,9 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     queries_str = ''
 
     relational_data = False
-    if relational_dataset != None:
+    if relational_dataset_path != None:
         relational_data = True
-        dataset_str, constants = parse_relational_dataset(dataset_filepath)
+        dataset_str, constants = parse_relational_dataset_to_string(relational_dataset_path)
     
     for head in model:
         # add clauses -- we use a variable named theta_head_index to
@@ -263,16 +269,6 @@ def generate_substitutions(atoms, constants):
     return substitutions
 
 
-# def apply_substitution(atoms, substitution):
-#     substituted_atoms = []
-#     for atom in atoms:
-#         predicate, arguments = parse_relational_var(atom)
-#         substituted_atom = predicate + "("
-#         for arg in arguments:
-#             substituted_atom += substitution[arg] + ","
-#         substituted_atom = substituted_atom[:-1] + ")"
-#         substituted_atoms.append(substituted_atom)
-#     return substituted_atoms
 def apply_substitution(atom, substitution):
     predicate, arguments = parse_relational_var(atom)
     substituted_atom = predicate + "("
@@ -310,7 +306,7 @@ def parse_relational_dataset(filepath):
     return observations, constants
 
 
-def parse_relational_dataset_to_string(filepath):
+def parse_relational_dataset_to_string(filepath, evidences=True):
     constants = set()
     temp_file = open(filepath, 'r+')
     dataset_str = ''
@@ -322,7 +318,12 @@ def parse_relational_dataset_to_string(filepath):
         # remove whitespace and end of line
         line = line.replace(' ', '').replace('\n', '').replace('.', '')
         # parse line
-        _, arguments = parse_relational_var(line)
+        if evidences:
+            _, pred, rest = line.split('(')
+            arguments_str = rest.split(')')[0]
+            arguments = arguments_str.split(',')
+        else:
+            _, arguments = parse_relational_var(line)
         constants = constants.union(set(arguments))
     temp_file.close()
     return dataset_str, constants

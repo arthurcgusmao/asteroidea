@@ -12,12 +12,13 @@ from scipy.optimize import basinhopping, minimize
     
 class Learner(object):
 
-    def __init__(self, structure_filepath):
-        self.model = parser.read_structure(structure_filepath)
+    def __init__(self, structure_filepath, relational_data=False):
+        self.relational_data = relational_data
+        self.model = parser.read_structure(structure_filepath, relational_data=relational_data)
         self.configs_tables = parser.build_configs_tables(self.model)
 
             
-    def learn_parameters(self, dataset, relational_data=False):
+    def learn_parameters(self, dataset):
         """Find the (exact or approximated) optimal parameters for the dataset.
         Before running this function, make sure you have read a structure file
         compatible with the variables present in the dataset.
@@ -27,7 +28,7 @@ class Learner(object):
         Missing values in the dataset should be represented as NaN.
         """
         self.dataset = dataset
-        if relational_data:
+        if self.relational_data:
             self._update_count_relational()
         else:
             self._verify_propositional_dataset()
