@@ -130,7 +130,6 @@ def build_configs_tables(model):
             # generate dumb_var names
             predicate, _  = parse_relational_var(head)
             df.loc[c, 'dumb_var'] = dumb_var + '_' + predicate + '_' + str(c)
-        print(df)
         configs_tables[head] = df
     return configs_tables
 
