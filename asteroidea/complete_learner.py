@@ -41,22 +41,25 @@ class Learner(object):
     
     def _update_count_propositional(self):
         self.logger.info('Updating count for propositional dataset...')
+        # get ordered configuration variables for each head
+        config_vars_head = {}
+        for head in self.configs_tables:
+            number_of_vars = len(self.model[head]['parents']) + 1
+            columns = self.configs_tables[head].columns.tolist()
+            config_vars_head[head] = columns[0:number_of_vars]
         # count the number of occurences of each configuration for each family
         for i, row in self.dataset.iterrows():
             for head in self.configs_tables:
-                configs_table = self.configs_tables[head]
-                config_vars = {head: row[head]}
-                for parent in self.model[head]['parents']:
-                    config_vars[parent] = row[parent]
-                # get the index of the configs_table that corresponds to the
-                # configuration of the current example
-                df = configs_table
-                for var in config_vars:
-                    value = config_vars[var]
-                    df = df.loc[df[var] == value]
-                index = df.index.values[0]
+                config_vars = config_vars_head[head]
+                number_of_vars = len(config_vars)
+                # calculate the index of the configs_table that corresponds to
+                # the configuration of the current example
+                index = 0
+                for v, var in enumerate(config_vars):
+                    value = row[var]
+                    index += 2**(number_of_vars - (v + 1)) * value
                 # updates the count in configs_table
-                configs_table.loc[index, 'count'] += 1
+                self.configs_tables[head].loc[index, 'count'] += 1
         self.logger.info('Ok')
 
 
