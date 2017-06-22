@@ -5,14 +5,17 @@ from asteroidea import calculations
 
 import time
 import math
+import logging
 import numpy as np
 import pandas as pd
 from scipy.optimize import basinhopping, minimize
 
-    
+
 class Learner(object):
 
     def __init__(self, structure_filepath, relational_data=False):
+        self.logger = logging.getLogger('asteroidea')
+        self.info = {'no_exact_solution': set()}
         self.relational_data = relational_data
         self.model = parser.read_structure(structure_filepath, relational_data=relational_data)
         self.configs_tables = parser.build_configs_tables(self.model)
@@ -37,6 +40,7 @@ class Learner(object):
 
     
     def _update_count_propositional(self):
+        self.info('Updating count for propositional dataset...')
         # count the number of occurences of each configuration for each family
         for i, row in self.dataset.iterrows():
             for head in self.configs_tables:
@@ -53,9 +57,11 @@ class Learner(object):
                 index = df.index.values[0]
                 # updates the count in configs_table
                 configs_table.loc[index, 'count'] += 1
+        self.info('Ok')
 
 
     def _update_count_relational(self):
+        self.info('Updating count for relational dataset...')
         observations, constants = parser.parse_relational_dataset(self.dataset)
         for head in self.configs_tables:
             configs_table = self.configs_tables[head]
@@ -77,10 +83,12 @@ class Learner(object):
                 # row where we should increase the count
                 index = df.index.values[0]
                 configs_table.loc[index, 'count'] += 1
+        self.info('Ok')
 
 
     def _find_optimal_parameters(self):
         # maximize the likelihood by finding the optimal parameters
+        self.logger.info('Finding optimal parameters...')
         ll = 0
         new_params = {}
         for head in self.model:
@@ -88,8 +96,9 @@ class Learner(object):
             configs_table = self.configs_tables[head]
             optimal_params = calculations.exact_optimization(head, configs_table)
             if optimal_params == False:
-                self.info['no_exact_solution'].add(head)
                 # there is no exact solution, run optimization method
+                self.logger.debug('Variable %s has no exact solution, approximate maximization will be run.' % head)
+                self.info['no_exact_solution'].add(head)
                 initial_guess = []
                 for rule in rules:
                     initial_guess.append(rule['parameter'])
@@ -102,16 +111,19 @@ class Learner(object):
                         # bounds = [(0.001,0.999)]*len(initial_guess),
                         options = {'disp': True ,'eps' : 1e-7})
                 optimal_params = res.x.tolist()
+                self.logger.debug('Approximate maximization run successfully for variable %s.' % head)
             # update log-likelihood
             ll += calculations.head_log_likelihood(optimal_params, head,
                                                    self.model, configs_table)
             # store new parameters
             new_params[head] = optimal_params
+        self.logger.info('Optimal parameters found.')
         return {'log-likelihood': ll,
                 'optimal parameters': new_params}
 
 
     def _verify_propositional_dataset(self):
+        self.logger.info("Verifying propositional dataset against model...")
         # ensure dataset is a pandas dataframe
         if not isinstance(self.dataset, pd.DataFrame):
             raise TypeError('dataset should be a Pandas DataFrame')
@@ -121,3 +133,4 @@ class Learner(object):
                 # what to do if column in dataset is not head of any rule?
                 raise Exception('Column %s in dataset is not head of any rule.'
                                 % column)
+        self.logger.info("Ok")
