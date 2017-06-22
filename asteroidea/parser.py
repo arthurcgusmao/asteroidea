@@ -27,7 +27,7 @@ def read_structure(filepath, relational_data=False):
         if '%' in line:
             continue
         # remove whitespace and end of line
-        line = line.replace(' ', '').replace('\n', '').replace('.', '')
+        line = line.replace(' ', '').replace('.\n', '').replace('\n', '')
         # skip empty lines
         if line == '':
             continue
@@ -285,11 +285,12 @@ def parse_relational_dataset(filepath):
     s(a).
     s(b).
 
-    Everything that is not in the dataset will be considered false.
+    Everything that is not in the dataset will be considered false (i.e., this
+    function adopts the closed-world assumption).
     """
     constants = set()
     temp_file = open(filepath, 'r+')
-    observations = []
+    observations = {}
     for i, line in enumerate(temp_file):
         # comment syntax
         if '%' in line:
@@ -297,7 +298,7 @@ def parse_relational_dataset(filepath):
         # remove whitespace and end of line
         line = line.replace(' ', '').replace('\n', '').replace('.', '')
         # store observation
-        observations.append(line)
+        observations[line] = True
         # parse line
         _, arguments = parse_relational_var(line)
         constants = constants.union(set(arguments))

@@ -75,9 +75,9 @@ class Learner(object):
                 for atom in config_atoms:
                     substituted_atom = parser.apply_substitution(atom, substitution)
                     if substituted_atom in observations:
-                        value = 1
+                        value = observations[substituted_atom]
                     else:
-                        value = 0
+                        value = 0 # closed-world assumption
                     df = df.loc[df[atom] == value]
                 # we are left with only one row in the df, which is the right
                 # row where we should increase the count
@@ -107,7 +107,7 @@ class Learner(object):
                         initial_guess,
                         args = (head, self.model, configs_table, -1.0),
                         method = 'L-BFGS-B',
-                        bounds = [(0.0, 1.0)]*len(initial_guess),
+                        bounds = [(0.001, 0.999)]*len(initial_guess),
                         # bounds = [(0.001,0.999)]*len(initial_guess),
                         options = {'disp': True ,'eps' : 1e-7})
                 optimal_params = res.x.tolist()

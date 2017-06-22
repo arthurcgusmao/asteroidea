@@ -1,3 +1,4 @@
+import logging
 import math
 import numpy as np
 
@@ -18,6 +19,7 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
     rules = list(model[head]['rules']) # make a copy of rules list
     for i, rule in enumerate(rules):
         rules[i]['parameter'] = parameters[i]
+    logging.debug('Calculating head_log_likelihood with parameters: {} ...'.format(parameters))
     # update column likelihood of configs_table using given parameters.
     # we only need to consider configurations which count > 0
     for c, config in configs_table[configs_table['count'] > 0].iterrows():
@@ -36,12 +38,16 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
             if config[head] == 0:
                 prob = 1 - prob
             configs_table.loc[c, 'likelihood'] = prob
+        logging.debug('likelihood={}, calculated for configuration line {} head {}.'.format(prob, c, head))
     # calculate the sum of all log-likelihood * count for table
     output = 0
     for c, config in configs_table[configs_table['count'] > 0].iterrows():
         if config['likelihood'] <= 0:
-            return sign*float("-inf")
+            output = float("-inf")
+            logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
+            return sign*output
         output += config['count'] * math.log10(config['likelihood'])
+    logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
     return sign*output
 
 
