@@ -40,7 +40,7 @@ class Learner(object):
 
     
     def _update_count_propositional(self):
-        self.info('Updating count for propositional dataset...')
+        self.logger.info('Updating count for propositional dataset...')
         # count the number of occurences of each configuration for each family
         for i, row in self.dataset.iterrows():
             for head in self.configs_tables:
@@ -57,11 +57,11 @@ class Learner(object):
                 index = df.index.values[0]
                 # updates the count in configs_table
                 configs_table.loc[index, 'count'] += 1
-        self.info('Ok')
+        self.logger.info('Ok')
 
 
     def _update_count_relational(self):
-        self.info('Updating count for relational dataset...')
+        self.logger.info('Updating count for relational dataset...')
         observations, constants = parser.parse_relational_dataset(self.dataset)
         for head in self.configs_tables:
             configs_table = self.configs_tables[head]
@@ -83,7 +83,7 @@ class Learner(object):
                 # row where we should increase the count
                 index = df.index.values[0]
                 configs_table.loc[index, 'count'] += 1
-        self.info('Ok')
+        self.logger.info('Ok')
 
 
     def _find_optimal_parameters(self):
