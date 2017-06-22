@@ -38,7 +38,7 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
             if config[head] == 0:
                 prob = 1 - prob
             configs_table.loc[c, 'likelihood'] = prob
-        logging.debug('likelihood={}, calculated for configuration line {} head {}.'.format(prob, c, head))
+            logging.debug('likelihood={}, calculated for configuration line {} head {}.'.format(prob, c, head))
     # calculate the sum of all log-likelihood * count for table
     output = 0
     for c, config in configs_table[configs_table['count'] > 0].iterrows():
