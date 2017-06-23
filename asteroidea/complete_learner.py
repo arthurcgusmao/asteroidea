@@ -36,8 +36,10 @@ class Learner(object):
         else:
             self._verify_propositional_dataset()
             self._update_count_propositional()
-        return self._find_optimal_parameters()
-
+        ll, optimal_params = self._find_optimal_parameters()
+        self._update_model(optimal_params)
+        return ll, parser.pretty_print_model(self.model)
+        
     
     def _update_count_propositional(self):
         self.logger.info('Updating count for propositional dataset...')
@@ -119,8 +121,7 @@ class Learner(object):
             # store new parameters
             new_params[head] = optimal_params
         self.logger.info('Optimal parameters found.')
-        return {'log-likelihood': ll,
-                'optimal parameters': new_params}
+        return ll, new_params
 
 
     def _verify_propositional_dataset(self):
@@ -135,3 +136,10 @@ class Learner(object):
                 raise Exception('Column %s in dataset is not head of any rule.'
                                 % column)
         self.logger.info("Ok")
+
+
+    def _update_model(self, parameters):
+        for head in self.model:
+            rules = self.model[head]['rules']
+            for i, rule in enumerate(rules):
+                rules[i]['parameter'] = parameters[head][i]

@@ -63,7 +63,8 @@ def read_structure(filepath, relational_data=False):
         model[head]['rules'].append({'parameter': float(parameter),
                                      'parameter_name': param_name,
                                      'body': body_dict,
-                                     'clause_string': clause})
+                                     'clause_string': clause,
+                                     'line': i})
         # update parents
         for parent in body_dict:
             model[head]['parents'].add(parent)
@@ -356,3 +357,19 @@ def parse_relational_dataset_to_string(filepath, evidences=True):
         constants = constants.union(set(arguments))
     temp_file.close()
     return dataset_str, constants
+
+
+def pretty_print_model(model):
+    pretty_rules = {} # key is order
+    for head in model:
+        rules = model[head]['rules']
+        for rule in rules:
+            rule_string = "{}::{}.\n".format(rule['parameter'], rule['clause_string'])
+            pretty_rules[rule['line']] = rule_string
+    output = ""
+    for i in range(0, len(pretty_rules)):
+        if i in pretty_rules:
+            output += pretty_rules[i]
+    return output
+        
+    
