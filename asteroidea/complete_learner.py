@@ -66,26 +66,23 @@ class Learner(object):
     def _update_count_relational(self):
         self.logger.info('Updating count for relational dataset...')
         observations, constants = parser.parse_relational_dataset(self.dataset)
+        # get ordered configuration variables for each head
+        config_atoms_head = {}
         for head in self.configs_tables:
-            configs_table = self.configs_tables[head]
-            config_atoms = [head]
-            for parent in self.model[head]['parents']:
-                config_atoms.append(parent)
-
-            substitutions = parser.generate_substitutions(config_atoms, constants)
-            for substitution in substitutions:
-                df = configs_table
-                for atom in config_atoms:
-                    substituted_atom = parser.apply_substitution(atom, substitution)
-                    if substituted_atom in observations:
-                        value = observations[substituted_atom]
+            number_of_atoms = len(self.model[head]['parents']) + 1
+            columns = self.configs_tables[head].columns.tolist()
+            config_atoms = columns[0:number_of_atoms]
+            
+            groundings = parser.generate_groundings(config_atoms, constants)
+            for grounding in groundings:
+                index = 0
+                for g, grounded_atom in enumerate(grounding):
+                    if grounded_atom in observations:
+                        value = observations[grounded_atom]
                     else:
                         value = 0 # closed-world assumption
-                    df = df.loc[df[atom] == value]
-                # we are left with only one row in the df, which is the right
-                # row where we should increase the count
-                index = df.index.values[0]
-                configs_table.loc[index, 'count'] += 1
+                    index += 2**(number_of_atoms - (g + 1)) * value
+                self.configs_tables[head].loc[index, 'count'] += 1
         self.logger.info('Ok')
 
 

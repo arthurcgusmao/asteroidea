@@ -277,6 +277,35 @@ def apply_substitution(atom, substitution):
     return substituted_atom
 
 
+def generate_groundings(atoms, constants):
+    """Generates a list of groundings."""
+    arguments_list = []
+    parsed_atoms = []
+    for atom in atoms:
+        predicate, arguments = parse_relational_var(atom)
+        arguments_indexes = []
+        for argument in arguments:
+            try:
+                index = arguments_list.index(argument)
+            except ValueError:
+                index = len(arguments_list)
+                arguments_list.append(argument)
+            arguments_indexes.append(index)
+        parsed_atoms.append({'predicate': predicate, 'arguments_indexes': arguments_indexes})
+    combinations = itertools.product(constants, repeat=len(arguments_list))
+    groundings = []
+    for combination in combinations:
+        grounding = []
+        for parsed_atom in parsed_atoms:
+            string = parsed_atom['predicate'] + '('
+            for arguments_index in parsed_atom['arguments_indexes']:
+                string += combination[arguments_index] + ','
+            string = string[:-1] + ')'
+            grounding.append(string)
+        groundings.append(grounding)
+    return groundings
+
+
 def parse_relational_dataset(filepath):
     """Parses a file containing a set of non-probabilistic relational
     observations. It should have one observation per line, in the form:
@@ -298,7 +327,7 @@ def parse_relational_dataset(filepath):
         # remove whitespace and end of line
         line = line.replace(' ', '').replace('\n', '').replace('.', '')
         # store observation
-        observations[line] = True
+        observations[line] = 1
         # parse line
         _, arguments = parse_relational_var(line)
         constants = constants.union(set(arguments))
