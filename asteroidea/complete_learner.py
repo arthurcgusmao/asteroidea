@@ -83,6 +83,7 @@ class Learner(object):
                         value = 0 # closed-world assumption
                     index += 2**(number_of_atoms - (g + 1)) * value
                 self.configs_tables[head].loc[index, 'count'] += 1
+            self.logger.debug('Updated counts for head {} in configs_table.'.format(head))
         self.logger.info('Ok')
 
 
