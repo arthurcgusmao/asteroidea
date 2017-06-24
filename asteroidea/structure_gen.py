@@ -178,6 +178,7 @@ def build_configs_tables(all_models):
         df.loc[:,'dumb_var'] = pd.Series(None, index=df.index)
 
         # for each rules combination, create two coluns in the dataframe:
+        
         # likelihood and active rules.
         df.loc[:,'likelihood'] = pd.Series(np.nan, index=df.index)
         df.loc[:,'active_rules'] = pd.Series(None, index=df.index)

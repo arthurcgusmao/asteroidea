@@ -28,7 +28,7 @@ class Learner(object):
                                     self.model, self.configs_tables,
                                     probabilistic_data=probabilistic_data,
                                     suppress_evidences=(sampling or relational),
-                                    dataset_filepath=dataset_filepath)
+                                    relational_dataset_path=dataset_filepath)
         if sampling:
             print('not implemented.')
         else:
