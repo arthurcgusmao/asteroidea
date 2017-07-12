@@ -8,6 +8,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import basinhopping, minimize
 
+import logging
+
     
 class Learner(object):
 
@@ -24,6 +26,8 @@ class Learner(object):
                                     self.model, self.configs_tables,
                                     probabilistic_data=probabilistic_data,
                                     suppress_evidences=sampling)
+        logging.debug("Problog model string builded:\n{}".format(self.problog_model_str))
+        
         if sampling:
             print('not implemented.')
         else:
@@ -73,6 +77,10 @@ class Learner(object):
                     for c, config in configs_table.iterrows():
                         update_in_count = res[config['dumb_var']]
                         configs_table.loc[c, 'count'] += update_in_count
+            # logging -- debugging
+            for head in configs_tables:
+                configs_table = configs_tables[head]
+                logging.debug("Configurations table for head {}:\n {}".format(head, configs_table))
 
             ### updating the initial ll value in learning info ###
             if old_ll == None:
