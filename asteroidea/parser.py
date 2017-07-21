@@ -98,7 +98,7 @@ def build_configs_tables(model):
     dumb_var = 'c'
     while dumb_var in model.keys():
         dumb_var += dumb_var
-        
+
     configs_tables = {}
     for head in model:
         rules = model[head]['rules']
@@ -141,7 +141,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     ready to make inference.
 
     Keyword arguments (see Model class for more information):
-    model -- model dict 
+    model -- model dict
     config_tables -- a list of configuration tables
     """
     # generate model string accordingly to ProbLog's syntax
@@ -156,7 +156,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     if relational_dataset_path != None:
         relational_data = True
         dataset_str, constants = parse_relational_dataset_to_string(relational_dataset_path)
-    
+
     for head in model:
         # add clauses -- we use a variable named theta_head_index to
         # change the model's parameters dinamically
@@ -186,7 +186,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
         config_vars = [head]
         for parent in parents:
             config_vars.append(parent)
-            
+
         if relational_data:
             # dealing with relational data
             substitutions = generate_substitutions(config_vars, constants)
@@ -221,12 +221,12 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
                 configs_str = configs_str[:-1]
                 configs_str += '.\n'
                 queries_str += "query(%s).\n" % config_dumb_var
-                
+
     model_str += rules_str + configs_str + prob_str + queries_str
     if not suppress_evidences:
         model_str += evidences_str
     if relational_data:
-        output = dataset_str + model_str
+        output = dataset_str + "\n" + model_str
     else:
         output = model_str
     return output
@@ -371,5 +371,5 @@ def pretty_print_model(model):
         if i in pretty_rules:
             output += pretty_rules[i]
     return output
-        
-    
+
+
