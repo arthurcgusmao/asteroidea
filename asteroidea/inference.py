@@ -11,36 +11,36 @@ from problog.errors import InconsistentEvidenceError
 class CustomSemiring(SemiringLogProbability):
     # this class is used to make inference faster for the same structure but
     # changing parameters using ProbLog
-    
+
     def __init__(self, weights):
         SemiringLogProbability.__init__(self)
         self.weights = weights
 
-        
+
     def value(self, a):
         # Argument 'a' contains ground term. Look up its probability in the
         # weights dictionary.
         return SemiringLogProbability.value(self, self.weights.get(a, a))
 
 
-    
+
 class Inference(object):
 
-    
-    def __init__(self, model_str, probabilistic_data=False):
+
+    def __init__(self, model_str, probabilistic_data=False, relational_data=False):
         # parse the Prolog string
         pl_model_sr = PrologString(model_str)
         # compile the Prolog model
         self.problog_knowledge_sr = get_evaluatable().create_from(pl_model_sr)
         self.probabilistic_data = probabilistic_data
+        self.relational_data = relational_data
 
-        
+
     def update_weights(self, model):
         """Updates the weights of the model."""
         self.model = model
         self.custom_weights = {}
         self.custom_weights_items = {}
-        # print(self.problog_knowledge_sr.get_weights())
         xs = self.problog_knowledge_sr.get_weights().values()
         for x in xs:
             if getattr(x, "functor", None):
@@ -51,8 +51,8 @@ class Inference(object):
                 if rule['parameter_name'] in self.custom_weights_items.keys():
                     x = self.custom_weights_items[rule['parameter_name']]
                     self.custom_weights[x] = rule['parameter']
-        
-    
+
+
     def eval(self, evidence=pd.Series()):
         """Returns the query for all configurations of all head variables
         in the model, given the evidence.
@@ -83,16 +83,19 @@ class Inference(object):
                     # and weights for probabilistic dumb rules
                     self.custom_weights[x_1] = value
                     self.custom_weights[x_0] = 1 - value
-                
-        # print('\nevidence_dict:::\n', evidence_dict)
-        # print('\n\nself.custom_weights:::\n', self.custom_weights)
-        
+
         # make inference
         try:
-            res = self.problog_knowledge_sr.evaluate(
-                        evidence=evidence_dict,
-                        keep_evidence=False,
-                        semiring=CustomSemiring(self.custom_weights)),
+            if not self.relational_data:
+                res = self.problog_knowledge_sr.evaluate(
+                            evidence=evidence_dict,
+                            keep_evidence=False,
+                            semiring=CustomSemiring(self.custom_weights)),
+            else:
+                res = self.problog_knowledge_sr.evaluate(
+                            # evidence=evidence_dict,
+                            keep_evidence=True,
+                            semiring=CustomSemiring(self.custom_weights)),
             output = {}
             for key in res[0]:
                 output[str(key)] = res[0][key]
