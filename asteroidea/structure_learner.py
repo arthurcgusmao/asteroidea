@@ -8,38 +8,29 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import basinhopping, minimize
 
-
+    
 class Learner(object):
 
-    def __init__(self, structure_filepath, dataset_filepath=None,
-                 probabilistic_data=False, sampling=False, relational=False):
+    def __init__(self, structure_filepath,
+                 probabilistic_data=False, sampling=False):
         self.info = {'df': None,
                      'time_log': {}}
         self._log_time('Building models', start=True)
-        self.relational = relational
-        if relational:
-            if dataset_filepath == None:
-                raise ValueError("""When learning a relational dataset you
-                                 should pass `dataset_filepath` argument.""")
-
-        self.model = parser.read_structure(structure_filepath,True)
+        
+        self.model = parser.read_structure(structure_filepath)
         self.configs_tables = parser.build_configs_tables(self.model)
         self.problog_model_str = parser.build_problog_model_str(
                                     self.model, self.configs_tables,
                                     probabilistic_data=probabilistic_data,
-                                    suppress_evidences=(sampling or relational),
-                                    relational_dataset_path=dataset_filepath)
-        #print ("self.problog_model_str=",self.problog_model_str )
-
+                                    suppress_evidences=sampling)
         if sampling:
             print('not implemented.')
         else:
             self.knowledge = Inference(self.problog_model_str,
-                                       probabilistic_data=probabilistic_data,
-                                       relational_data=relational)
+                                       probabilistic_data=probabilistic_data)
 
-
-    def learn_parameters(self, epsilon=0.01):
+            
+    def learn_structure(self, dataset, epsilon=0.01):
         """Find the (exact or approximated) optimal parameters for the dataset.
         Before running this function, make sure you have read a structure file
         compatible with the variables present in the dataset.
@@ -51,6 +42,15 @@ class Learner(object):
         self._log_time('Others')
         model = self.model
         configs_tables = self.configs_tables
+        # ensure dataset is a pandas dataframe
+        if not isinstance(dataset, pd.DataFrame):
+            raise TypeError('dataset should be a Pandas DataFrame')
+        # ensure all variables in the dataset are head of a rule
+        for column in dataset.columns:
+            if not column in model:
+                # what to do if column in dataset is not head of any rule?
+                raise Exception('Column %s in dataset is not head of any rule.'
+                                % column)
 
         # begin EM cycle
         old_ll = None
@@ -60,44 +60,34 @@ class Learner(object):
 
             ### E step ###
             self._log_time('E step')
-            for head in configs_tables:
+            for head in model:
                 # reset configurations tables
-                configs_tables[head].loc[:, 'count'] = 0
+                self.configs_tables[head].loc[:, 'count'] = 0
             self.knowledge.update_weights(model)
-            if not self.relational:
-                for i, row in self.dataset.iterrows():
-                    res = self.knowledge.eval(evidence=row)
-                    for head in configs_tables:
-                        configs_table = configs_tables[head]
-                        for c, config in configs_table.iterrows():
-                            update_in_count = res[config['dumb_var']]
-                            configs_table.loc[c, 'count'] += update_in_count
-            else:
-                res = self.knowledge.eval()
+            for i, row in dataset.iterrows():
+                res = self.knowledge.eval(evidence=row)
                 for head in configs_tables:
                     configs_table = configs_tables[head]
-                    # for c, config in configs_table.iterrows():
-                    #     update_in_count = res[config['dumb_var']]
-                    #     configs_table.loc[c, 'count'] += update_in_count
-                    for query in res:
-                        prob = res[query]
-                        dumb_var = query.split('__')[0]
-                        # print(configs_tables[head])
-                        configs_table.loc[configs_table['dumb_var'] == dumb_var, 'count'] += prob
-                        # print(configs_tables[head])
+                    for c, config in configs_table.iterrows():
+                        update_in_count = res[config['dumb_var']]
+                        configs_table.loc[c, 'count'] += update_in_count
 
             ### updating the initial ll value in learning info ###
             if old_ll == None:
                 old_ll = calculations.log_likelihood(model, configs_tables)
                 self._update_learning_info(old_ll, begin_em=True)
-            print ("old_ll=",old_ll)
 
             ### M step ###
+
+            for family in possible_families:
+                configs_table = configs_table[family]
+                for i, rules_combination in family.rules_combinations:
+                    
+            
             self._log_time('M step')
             for head in model:
                 rules = model[head]['rules']
                 configs_table = configs_tables[head]
-                print (configs_table)
                 optimal_params = calculations.exact_optimization(head, configs_table)
                 if optimal_params == False:
                     print("Iteration", len(self._learning_data), "had no exact solution for head", head, "bro.")
@@ -114,8 +104,7 @@ class Learner(object):
                             # bounds = [(0.001,0.999)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
-                print ("optimal_params=", optimal_params)
-
+                        
                 # update log-likelihood
                 ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table)
                 # store new parameters
@@ -128,16 +117,15 @@ class Learner(object):
                 for i, rule in enumerate(rules):
                     rules[i]['parameter'] = new_params[head][i]
             # EM cycle stopping criteria
-            print ("ll=",ll)
-            if (ll - old_ll) < epsilon and (ll - old_ll) > 0:
+            if abs((ll - old_ll) / ll) < epsilon:
                 learning_info = self._update_learning_info(ll, end_em=True)
                 break
             old_ll = ll
             # update data about iterations
             self._update_learning_info(ll)
         return learning_info
-
-
+    
+        
     def _update_learning_info(self, log_likelihood,
                               begin_em=False, end_em=False):
         """This function stores information about parameters, log-likelihood
@@ -169,7 +157,7 @@ class Learner(object):
             self.info['df'] = pd.DataFrame(self._learning_data,
                                            columns=columns)
 
-
+            
     def _log_time(self, activity, start=False):
         if not start:
             last_activity = self._log_time__last_activity
