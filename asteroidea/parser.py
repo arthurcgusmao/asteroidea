@@ -136,7 +136,7 @@ def build_configs_tables(model):
 
 
 def build_problog_model_str(model, configs_tables, probabilistic_data=False,
-                            suppress_evidences=False, relational_dataset_path=None):
+                            suppress_evidences=False, relational_data=False, relational_dataset_path=None):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -152,9 +152,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     evidences_str = ''
     queries_str = ''
 
-    relational_data = False
-    if relational_dataset_path != None:
-        relational_data = True
+    if relational_data:
         dataset_str, constants = parse_relational_dataset_to_string(relational_dataset_path)
 
     for head in model:
