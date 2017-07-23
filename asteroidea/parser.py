@@ -136,7 +136,8 @@ def build_configs_tables(model):
 
 
 def build_problog_model_str(model, configs_tables, probabilistic_data=False,
-                            suppress_evidences=False, relational_data=False, relational_dataset_path=None):
+                            suppress_evidences=False, relational_data=False,
+                            relational_dataset_path=None, typed=False):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -153,7 +154,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     queries_str = ''
 
     if relational_data:
-        dataset_str, constants = parse_relational_dataset_to_string(relational_dataset_path)
+        dataset_str, constants = parse_relational_dataset_to_string(relational_dataset_path, typed=typed)
 
     for head in model:
         # add clauses -- we use a variable named theta_head_index to
@@ -334,7 +335,7 @@ def parse_relational_dataset(filepath):
     return observations, constants
 
 
-def parse_relational_dataset_to_string(filepath, evidences=True):
+def parse_relational_dataset_to_string(filepath, evidences=True, typed=False):
     constants = set()
     temp_file = open(filepath, 'r+')
     dataset_str = ''
@@ -346,13 +347,18 @@ def parse_relational_dataset_to_string(filepath, evidences=True):
         # remove whitespace and end of line
         line = line.replace(' ', '').replace('\n', '').replace('.', '')
         # parse line
-        if evidences:
-            _, pred, rest = line.split('(')
-            arguments_str = rest.split(')')[0]
-            arguments = arguments_str.split(',')
+        if typed:
+            if not 'evidence' in line:
+                _, arguments = parse_relational_var(line)
+                constants = constants.union(set(arguments))
         else:
-            _, arguments = parse_relational_var(line)
-        constants = constants.union(set(arguments))
+            if evidences:
+                _, pred, rest = line.split('(')
+                arguments_str = rest.split(')')[0]
+                arguments = arguments_str.split(',')
+            else:
+                _, arguments = parse_relational_var(line)
+            constants = constants.union(set(arguments))
     temp_file.close()
     return dataset_str, constants
 
@@ -369,5 +375,3 @@ def pretty_print_model(model):
         if i in pretty_rules:
             output += pretty_rules[i]
     return output
-
-

@@ -81,7 +81,7 @@ def exact_optimization(head, configs_table):
         A1=coefficients[0]
         A0=coefficients[1]
         # print ("A0=",A0)
-        # print ("A1=",A1)            
+        # print ("A1=",A1)
         aux_a=np.float64(A0)/(A0+A1)
         if A0+A1==0:
             aux_a=0.5
@@ -96,11 +96,11 @@ def exact_optimization(head, configs_table):
         A1=coefficients[0]
         A0=coefficients[1]
         B1=coefficients[2]
-        B0=coefficients[3] 
+        B0=coefficients[3]
         # print ("A0=",A0)
-        # print ("A1=",A1) 
+        # print ("A1=",A1)
         # print ("B0=",B0)
-        # print ("B1=",B1) 
+        # print ("B1=",B1)
         aux_a=np.float64(A0)/(A0+A1)
         if A0+A1==0:
             aux_a=0.5
@@ -122,7 +122,7 @@ def exact_optimization(head, configs_table):
         B1=coefficients[2]
         B0=coefficients[3]
 
-        exact_sollution=True  
+        exact_sollution=True
 
         aux_a=np.float64(A0)/(A0+A1)
 
@@ -146,18 +146,18 @@ def exact_optimization(head, configs_table):
                 if B0!=0 and B1!=0:
                     aux_b=B0/(B0+B1)
                     if exact_sollution==True:
-                        exact_sollution=False  
-            else: #A1!=0       
+                        exact_sollution=False
+            else: #A1!=0
                 if B0==0 and B1==0:
                     aux_b=0.5
 
         # print ("A0=",A0)
-        # print ("A1=",A1) 
+        # print ("A1=",A1)
         # print ("B0=",B0)
-        # print ("B1=",B1) 
+        # print ("B1=",B1)
 
         probabilities_list[0]=max(min(aux_a,1),0) #r1
-        probabilities_list[1]=max(min(aux_b,1),0) #r2  
+        probabilities_list[1]=max(min(aux_b,1),0) #r2
 
         if not exact_sollution:
             return False
@@ -176,7 +176,7 @@ def exact_optimization(head, configs_table):
         B1=coefficients[2]
         B0=coefficients[3]
         C1=coefficients[4]
-        C0=coefficients[5]     
+        C0=coefficients[5]
 
         aux_a=np.float64(A0)/(A0+A1)
         if A0+A1==0:
@@ -191,19 +191,19 @@ def exact_optimization(head, configs_table):
             aux_c=0.5
 
         # print ("A0=",A0)
-        # print ("A1=",A1) 
+        # print ("A1=",A1)
         # print ("B0=",B0)
-        # print ("B1=",B1) 
+        # print ("B1=",B1)
         # print ("C0=",C0)
-        # print ("C1=",C1) 
+        # print ("C1=",C1)
 
         probabilities_list[0]=max(min(aux_a,1),0) #r1
         probabilities_list[1]=max(min(aux_b,1),0) #r2
-        probabilities_list[2]=max(min(aux_c,1),0) #r3         
+        probabilities_list[2]=max(min(aux_c,1),0) #r3
 
         return probabilities_list
 
-    if set(["0","1","0,1","2"])==rules_combinations: #No exact sollution      
+    if set(["0","1","0,1","2"])==rules_combinations: #No exact sollution
         return False
 
     if set(["0","0,1","0,2","0,1,2"])==rules_combinations: #No exact sollution
@@ -223,7 +223,7 @@ def exact_optimization(head, configs_table):
         B1=coefficients[2]
         B0=coefficients[3]
         C1=coefficients[4]
-        C0=coefficients[5]          
+        C0=coefficients[5]
 
         exact_sollution=True
 
@@ -243,7 +243,7 @@ def exact_optimization(head, configs_table):
                     aux_b=0.0
                 if B0!=0 and B1==0:
                     aux_b=1.0
-                if B0!=0 and B1!=0:                       
+                if B0!=0 and B1!=0:
                     aux_b=B0/(B0+B1)
                     if exact_sollution==True:
                         exact_sollution=False
@@ -254,7 +254,7 @@ def exact_optimization(head, configs_table):
                     aux_c=0.0
                 if C0!=0 and C1==0:
                     aux_c=1.0
-                if C0!=0 and C1!=0:                       
+                if C0!=0 and C1!=0:
                     aux_c=B0/(C0+C1)
                     if exact_sollution==True:
                         exact_sollution=False
@@ -270,15 +270,15 @@ def exact_optimization(head, configs_table):
             aux_c=0.5
 
         # print ("A0=",A0)
-        # print ("A1=",A1) 
+        # print ("A1=",A1)
         # print ("B0=",B0)
-        # print ("B1=",B1) 
+        # print ("B1=",B1)
         # print ("C0=",C0)
-        # print ("C1=",C1) 
+        # print ("C1=",C1)
 
         probabilities_list[0]=max(min(aux_a,1),0) #r1
         probabilities_list[1]=max(min(aux_b,1),0) #r2
-        probabilities_list[2]=max(min(aux_c,1),0) #r3    
+        probabilities_list[2]=max(min(aux_c,1),0) #r3
 
         if not exact_sollution:
             return False
@@ -294,44 +294,44 @@ def exact_optimization(head, configs_table):
         B1=coefficients[2]
         B0=coefficients[3]
         C1=coefficients[4]
-        C0=coefficients[5]    
+        C0=coefficients[5]
         D1=coefficients[6]
-        D0=coefficients[7]   
+        D0=coefficients[7]
 
-        aux_a=np.float64(A0)/(A0+A1) 
+        aux_a=np.float64(A0)/(A0+A1)
         if A0+A1==0:
             aux_a=0.5
 
-        aux_b=np.float64(B0)/(B0+B1) 
+        aux_b=np.float64(B0)/(B0+B1)
         if B0+B1==0:
-            aux_b=0.5           
+            aux_b=0.5
 
         aux_c=np.float64(C0)/(C0+C1)
         if C0+C1==0:
-            aux_c=0.5 
+            aux_c=0.5
 
         aux_d=np.float64(D0)/(D0+D1)
         if D0+D1==0:
-            aux_d=0.5 
+            aux_d=0.5
 
         # print ("A0=",A0)
-        # print ("A1=",A1) 
+        # print ("A1=",A1)
         # print ("B0=",B0)
-        # print ("B1=",B1) 
+        # print ("B1=",B1)
         # print ("C0=",C0)
-        # print ("C1=",C1) 
+        # print ("C1=",C1)
         # print ("C0=",C0)
-        # print ("C1=",C1) 
+        # print ("C1=",C1)
 
         probabilities_list[0]=max(min(aux_a,1),0) #r1
         probabilities_list[1]=max(min(aux_b,1),0) #r2
-        probabilities_list[2]=max(min(aux_c,1),0) #r3  
+        probabilities_list[2]=max(min(aux_c,1),0) #r3
         probabilities_list[3]=max(min(aux_d,1),0) #r4
 
         return probabilities_list
 
-    return False  
-  
+    return False
+
 
 
 def calculate_coefficients(head, configs_table, pattern_list):

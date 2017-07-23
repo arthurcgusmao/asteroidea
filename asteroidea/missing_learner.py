@@ -22,7 +22,7 @@ class Learner(object):
         self.logger = logging.getLogger('asteroidea')
         self.dataset_filepath = dataset_filepath
         self.relational_data = relational_data
-        
+
         if relational_data:
             if dataset_filepath == None:
                 raise ValueError("""When learning a relational dataset you
@@ -35,7 +35,8 @@ class Learner(object):
                                     probabilistic_data=probabilistic_data,
                                     suppress_evidences=(sampling or relational_data),
                                     relational_data=relational_data,
-                                    relational_dataset_path=dataset_filepath)
+                                    relational_dataset_path=dataset_filepath,
+                                    typed=True)
         self.logger.debug("Problog model string builded:\n{}".format(self.problog_model_str))
 
         if sampling:
@@ -63,12 +64,13 @@ class Learner(object):
 
         # begin EM cycle
         old_ll = None
+        step = 0
         while True:
             ll = 0
             new_params = {}
 
             ### E step ###
-            self.logger.debug("E step...")
+            self.logger.info("Starting E step #{}".format(step))
             self._log_time('E step')
             for head in configs_tables:
                 # reset configurations tables
@@ -97,7 +99,7 @@ class Learner(object):
                 self._update_learning_info(old_ll, begin_em=True)
 
             ### M step ###
-            self.logger.debug("M step...")
+            self.logger.info("Starting M step #{}".format(step))
             self._log_time('M step')
             for head in model:
                 rules = model[head]['rules']
@@ -131,11 +133,12 @@ class Learner(object):
                 for i, rule in enumerate(rules):
                     rules[i]['parameter'] = new_params[head][i]
             # EM cycle stopping criteria
-            self.logger.debug("Log-likelihood for current step of EM: {}".format(ll))
-            if (ll - old_ll) < epsilon and (ll - old_ll) > 0:
+            self.logger.info("Log-likelihood for step #{} step of EM: {}".format(step, ll))
+            if (ll - old_ll) < epsilon and (ll - old_ll) >= 0:
                 learning_info = self._update_learning_info(ll, end_em=True)
                 break
             old_ll = ll
+            step += 1
             # update data about iterations
             self._update_learning_info(ll)
         return learning_info
