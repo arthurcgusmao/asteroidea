@@ -137,7 +137,8 @@ def build_configs_tables(model):
 
 def build_problog_model_str(model, configs_tables, probabilistic_data=False,
                             suppress_evidences=False, relational_data=False,
-                            relational_dataset_path=None, typed=False):
+                            relational_dataset_path=None, typed=False,
+                            consistency_test=False):
     """Parses a set of rules and configuration tables and creates a model
     ready to make inference.
 
@@ -190,38 +191,43 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
             # dealing with relational data
             substitutions = generate_substitutions(config_vars, constants)
             for c, config in configs_table.iterrows():
-                query = config.filter(items=config_vars)
-                for s, substitution in enumerate(substitutions):
-                    config_dumb_var = configs_table.loc[c,:]['dumb_var'] +'__'+ str(s)
+                if config['active_rules']!="":
+                    query = config.filter(items=config_vars)
+                    for s, substitution in enumerate(substitutions):
+                        config_dumb_var = configs_table.loc[c,:]['dumb_var'] +'__'+ str(s)
+                        configs_str += config_dumb_var + ':-'
+                        for var, value in query.iteritems():
+                            predicate, arguments = parse_relational_var(var)
+                            var_str = predicate+'('
+                            for argument in arguments:
+                                var_str += substitution[argument] + ','
+                            var_str = var_str[:-1] + ')'
+                            if value == 1:
+                                configs_str += "%s," % var_str
+                            if value == 0:
+                                configs_str += "\+%s," % var_str
+                        configs_str = configs_str[:-1]
+                        configs_str += '.\n'
+                        queries_str += "query(%s).\n" % config_dumb_var
+        else:
+            for c, config in configs_table.iterrows():
+                if config['active_rules']!="":
+                    query = config.filter(items=config_vars)
+                    config_dumb_var = configs_table.loc[c,:]['dumb_var']
                     configs_str += config_dumb_var + ':-'
                     for var, value in query.iteritems():
-                        predicate, arguments = parse_relational_var(var)
-                        var_str = predicate+'('
-                        for argument in arguments:
-                            var_str += substitution[argument] + ','
-                        var_str = var_str[:-1] + ')'
                         if value == 1:
-                            configs_str += "%s," % var_str
+                            configs_str += "%s," % var
                         if value == 0:
-                            configs_str += "\+%s," % var_str
+                            configs_str += "\+%s," % var
                     configs_str = configs_str[:-1]
                     configs_str += '.\n'
                     queries_str += "query(%s).\n" % config_dumb_var
-        else:
-            for c, config in configs_table.iterrows():
-                query = config.filter(items=config_vars)
-                config_dumb_var = configs_table.loc[c,:]['dumb_var']
-                configs_str += config_dumb_var + ':-'
-                for var, value in query.iteritems():
-                    if value == 1:
-                        configs_str += "%s," % var
-                    if value == 0:
-                        configs_str += "\+%s," % var
-                configs_str = configs_str[:-1]
-                configs_str += '.\n'
-                queries_str += "query(%s).\n" % config_dumb_var
 
-    model_str += rules_str + configs_str + prob_str + queries_str
+    if consistency_test:
+        model_str += rules_str
+    else:
+        model_str += rules_str + configs_str + prob_str + queries_str
     if not suppress_evidences:
         model_str += evidences_str
     if relational_data:
