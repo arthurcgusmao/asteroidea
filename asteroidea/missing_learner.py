@@ -7,6 +7,7 @@ import math
 import numpy as np
 import pandas as pd
 from scipy.optimize import basinhopping, minimize
+from problog.errors import InconsistentEvidenceError
 
 import logging
 
@@ -55,7 +56,7 @@ class Learner(object):
                     raise InconsistentEvidenceError("""This error may have occured
                         because some observation in the dataset is impossible given
                         the model structure.""")
-                print('here are here', consistency_test, dataset_filepath)
+
 
     def learn_parameters(self, epsilon=0.01):
         """Find the (exact or approximated) optimal parameters for the dataset.
