@@ -31,7 +31,6 @@ class Learner(object):
         self.model = parser.read_structure(structure_filepath, relational_data=relational_data)
         self.configs_tables = parser.build_configs_tables(self.model)
 
-        self.consistency=True
         for consistency_test in[True, False]:
             self.problog_model_str=parser.build_problog_model_str(
                                     self.model, self.configs_tables,
@@ -39,21 +38,24 @@ class Learner(object):
                                     suppress_evidences=(sampling or relational_data),
                                     relational_data=relational_data,
                                     relational_dataset_path=dataset_filepath,
-                                    typed=True,consistency_test=consistency_test)
+                                    typed=True,
+                                    consistency_test=consistency_test)
             self.logger.debug("Problog model string builded:\n{}".format(self.problog_model_str))
             if sampling:
                 print('not implemented.')
             else:
                 self.knowledge = Inference(self.problog_model_str,
                                            probabilistic_data=probabilistic_data,
-                                           relational_data=relational_data)
+                                           relational_data=True)
                 model=self.model
                 self.knowledge.update_weights(model)
                 try:
                     self.knowledge.eval()
                 except:
-                    self.consistency=False
-                    break
+                    raise InconsistentEvidenceError("""This error may have occured
+                        because some observation in the dataset is impossible given
+                        the model structure.""")
+                print('here are here', consistency_test, dataset_filepath)
 
     def learn_parameters(self, epsilon=0.01):
         """Find the (exact or approximated) optimal parameters for the dataset.
@@ -64,10 +66,6 @@ class Learner(object):
         epsilon -- stopping criteria
         Missing values in the dataset should be represented as NaN.
         """
-        if not self.consistency:
-            print("inconsistent evidence.")
-            return
-
         self._log_time('Others')
         model = self.model
         configs_tables = self.configs_tables
