@@ -130,7 +130,7 @@ class Learner(object):
                             bounds = [(0.001, 0.999)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
-                self.logger.debug("optimal_params={}".format(optimal_params))
+                self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
                 # update log-likelihood
                 ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table)
@@ -185,6 +185,7 @@ class Learner(object):
             columns.extend(['Elapsed Time', 'Log-Likelihood'])
             self.info['df'] = pd.DataFrame(self._learning_data,
                                            columns=columns)
+        return self.info
 
 
     def _log_time(self, activity, start=False):
