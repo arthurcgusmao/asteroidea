@@ -51,7 +51,7 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1,mode=''):
             output = float("-inf")
             logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
             return sign*output
-        output += config[count_mode] * math.log10(config['likelihood'])
+        output += config[count_mode] * math.log(config['likelihood'])
     logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
     return sign*output
 
