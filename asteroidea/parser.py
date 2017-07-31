@@ -108,6 +108,7 @@ def build_configs_tables(model):
             map(list, itertools.product([0, 1], repeat=len(init_columns))))
         df = pd.DataFrame(configs_values, columns=init_columns)
         df.loc[:,'count'] = pd.Series(0, index=df.index)
+        df.loc[:,'real_count'] = pd.Series(0, index=df.index)        
         df.loc[:,'likelihood'] = pd.Series(np.nan, index=df.index)
         df.loc[:,'active_rules'] = pd.Series(None, index=df.index)
         df.loc[:,'dumb_var'] = pd.Series(None, index=df.index)

@@ -32,6 +32,9 @@ class Learner(object):
         self.model = parser.read_structure(structure_filepath, relational_data=relational_data)
         self.configs_tables = parser.build_configs_tables(self.model)
 
+        if not relational_data:
+            self._read_propositional_dataset()
+
         for consistency_test in[True, False]:
             self.problog_model_str=parser.build_problog_model_str(
                                     self.model, self.configs_tables,
@@ -47,11 +50,15 @@ class Learner(object):
             else:
                 self.knowledge = Inference(self.problog_model_str,
                                            probabilistic_data=probabilistic_data,
-                                           relational_data=True)
+                                           relational_data=relational_data)
                 model=self.model
                 self.knowledge.update_weights(model)
                 try:
-                    self.knowledge.eval()
+                    if not self.relational_data:
+                        for i, row in self.propositional_dataset.iterrows():
+                            res = self.knowledge.eval(evidence=row)
+                    else:
+                        self.knowledge.eval()
                 except:
                     raise InconsistentEvidenceError("""This error may have occured
                         because some observation in the dataset is impossible given
@@ -70,8 +77,6 @@ class Learner(object):
         self._log_time('Others')
         model = self.model
         configs_tables = self.configs_tables
-        if not self.relational_data:
-            self._read_propositional_dataset()
 
         # begin EM cycle
         old_ll = None
@@ -86,6 +91,8 @@ class Learner(object):
             for head in configs_tables:
                 # reset configurations tables
                 configs_tables[head].loc[:, 'count'] = 0
+                if step==0:
+                    configs_tables[head].loc[:, 'real_count'] = 0
             self.knowledge.update_weights(model)
             if not self.relational_data:
                 for i, row in self.propositional_dataset.iterrows():
@@ -93,8 +100,12 @@ class Learner(object):
                     for head in configs_tables:
                         configs_table = configs_tables[head]
                         for c, config in configs_table.iterrows():
-                            update_in_count = res[config['dumb_var']]
-                            configs_table.loc[c, 'count'] += update_in_count
+                            if config['dumb_var'] in res:
+                                update_in_count = res[config['dumb_var']]
+                                configs_table.loc[c, 'count'] += update_in_count
+                                if step==0:
+                                    if update_in_count==1:
+                                        configs_table.loc[c, 'real_count'] += update_in_count
             else:
                 res = self.knowledge.eval()
                 for head in configs_tables:
@@ -103,6 +114,9 @@ class Learner(object):
                         prob = res[query]
                         dumb_var = query.split('__')[0]
                         configs_table.loc[configs_table['dumb_var'] == dumb_var, 'count'] += prob
+                        if step==0:
+                            if prob==1:
+                                configs_table.loc[configs_table['dumb_var'] == dumb_var, 'real_count'] += prob
 
             ### updating the initial ll value in learning info ###
             if old_ll == None:
@@ -127,13 +141,13 @@ class Learner(object):
                             initial_guess,
                             args = (head, model, configs_table, -1.0),
                             method = 'L-BFGS-B',
-                            bounds = [(0.001, 0.999)]*len(initial_guess),
+                            bounds = [(0.0, 1.0)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
                 # update log-likelihood
-                ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table)
+                ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table,mode='real')
                 # store new parameters
                 new_params[head] = optimal_params
 
