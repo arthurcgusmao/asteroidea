@@ -3,10 +3,10 @@ import math
 import numpy as np
 
 
-def head_log_likelihood(parameters, head, model, configs_table, sign=1):
-    """Returns the expected-value of the log-likelihood of a head variable
-    given its parents, for all possible configurations the examples of a
-    dataset can take. In other words, it is the function that the M step
+def head_log_likelihood(parameters, head, model, configs_table, sign=1,mode=''):
+    """Returns the expected-value (real value if mode=real) of the log-likelihood
+    of a head variablengiven its parents, for all possible configurations the examples
+    of a dataset can take. In other words, it is the function that the M step
     tries to maximize in the EM cycle. It is implict that the model and the
     dataset are given, and that the appropriated calculations in
     self.configs_tables[head] were made.
@@ -22,7 +22,12 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
     logging.debug('Calculating head_log_likelihood with parameters: {} ...'.format(parameters))
     # update column likelihood of configs_table using given parameters.
     # we only need to consider configurations which count > 0
-    for c, config in configs_table[configs_table['count'] > 0].iterrows():
+    if mode=='real':
+        count_mode='real_count'
+    else:
+        count_mode='count'
+
+    for c, config in configs_table[configs_table[count_mode] > 0].iterrows():
         # we only need to update the value of the likelihood for the cases
         # where the parameters influence it (i.e., when there are active
         # rules).
@@ -41,18 +46,18 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1):
             logging.debug('likelihood={}, calculated for configuration line {} head {}.'.format(prob, c, head))
     # calculate the sum of all log-likelihood * count for table
     output = 0
-    for c, config in configs_table[configs_table['count'] > 0].iterrows():
+    for c, config in configs_table[configs_table[count_mode] > 0].iterrows():
         if config['likelihood'] <= 0:
             output = float("-inf")
             logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
             return sign*output
-        output += config['count'] * math.log10(config['likelihood'])
+        output += config[count_mode] * math.log10(config['likelihood'])
     logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
     return sign*output
 
 
 def log_likelihood(model, configs_tables, sign=1):
-    """Returns the expected-value of the log-likelihood of the whole model.
+    """Returns the log-likelihood of the whole model.
     """
     ll = 0
     for head in model:
@@ -61,7 +66,7 @@ def log_likelihood(model, configs_tables, sign=1):
         params = []
         for rule in rules:
             params.append(rule['parameter'])
-        ll += head_log_likelihood(params, head, model, configs_table)
+        ll += head_log_likelihood(params, head, model, configs_table,mode='real')
     return ll
 
 
@@ -203,20 +208,8 @@ def exact_optimization(head, configs_table):
 
         return probabilities_list
 
-    if set(["0","1","0,1","2"])==rules_combinations: #No exact sollution
-        return False
-
-    if set(["0","0,1","0,2","0,1,2"])==rules_combinations: #No exact sollution
-        return False
-
-    if set(["0","1","0,2","1,2"])==rules_combinations: #No exact sollution
-        return False
-
-    if set(["1","2","0,1","0,2"])==rules_combinations: #No exact sollution
-        return False
-
     if set(["0","0,1","0,2"])==rules_combinations: #Exact sollution
-        probabilities_list=[0.0]*3
+        probabilities_list=[0.0]*3 #Ok
         coefficients=calculate_coefficients(head, configs_table,["0","0,1","0,2"])
         A1=coefficients[0]
         A0=coefficients[1]
@@ -284,6 +277,18 @@ def exact_optimization(head, configs_table):
             return False
 
         return probabilities_list
+
+    if set(["0","1","0,1","2"])==rules_combinations: #No exact sollution
+        return False
+
+    if set(["0","0,1","0,2","0,1,2"])==rules_combinations: #No exact sollution
+        return False #ok
+
+    if set(["0","1","0,2","1,2"])==rules_combinations: #No exact sollution
+        return False #ok
+
+    if set(["1","2","0,1","0,2"])==rules_combinations: #No exact sollution
+        return False
 
     #Combinations of 4 rules
     if set(["0","1","2","3"])==rules_combinations: #Exact sollution

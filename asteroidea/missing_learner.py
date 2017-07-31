@@ -86,6 +86,8 @@ class Learner(object):
             for head in configs_tables:
                 # reset configurations tables
                 configs_tables[head].loc[:, 'count'] = 0
+                if step==0:
+                    configs_tables[head].loc[:, 'real_count'] = 0
             self.knowledge.update_weights(model)
             if not self.relational_data:
                 for i, row in self.propositional_dataset.iterrows():
@@ -95,6 +97,9 @@ class Learner(object):
                         for c, config in configs_table.iterrows():
                             update_in_count = res[config['dumb_var']]
                             configs_table.loc[c, 'count'] += update_in_count
+                            if step==0:
+                                if update_in_count==1:
+                                    configs_table.loc[c, 'real_count'] += update_in_count
             else:
                 res = self.knowledge.eval()
                 for head in configs_tables:
@@ -103,6 +108,9 @@ class Learner(object):
                         prob = res[query]
                         dumb_var = query.split('__')[0]
                         configs_table.loc[configs_table['dumb_var'] == dumb_var, 'count'] += prob
+                        if step==0:
+                            if prob==1:
+                                configs_table.loc[configs_table['dumb_var'] == dumb_var, 'real_count'] += prob
 
             ### updating the initial ll value in learning info ###
             if old_ll == None:
@@ -133,7 +141,7 @@ class Learner(object):
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
                 # update log-likelihood
-                ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table)
+                ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table,mode='real')
                 # store new parameters
                 new_params[head] = optimal_params
 
