@@ -141,7 +141,7 @@ class Learner(object):
                             initial_guess,
                             args = (head, model, configs_table, -1.0),
                             method = 'L-BFGS-B',
-                            bounds = [(0.001, 0.999)]*len(initial_guess),
+                            bounds = [(0.0, 1.0)]*len(initial_guess),
                             options = {'disp': True ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
