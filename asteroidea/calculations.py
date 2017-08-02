@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 
-def head_log_likelihood(parameters, head, model, configs_table, sign=1,mode=''):
+def observed_head_log_likelihood(parameters, head, model, configs_table, sign=1):
     """Returns the expected-value (real value if mode=real) of the log-likelihood
     of a head variablengiven its parents, for all possible configurations the examples
     of a dataset can take. In other words, it is the function that the M step
@@ -20,13 +20,10 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1,mode=''):
     for i, rule in enumerate(rules):
         rules[i]['parameter'] = parameters[i]
     logging.debug('Calculating head_log_likelihood with parameters: {} ...'.format(parameters))
+    count_mode='real_count'
+
     # update column likelihood of configs_table using given parameters.
     # we only need to consider configurations which count > 0
-    if mode=='real':
-        count_mode='real_count'
-    else:
-        count_mode='count'
-
     for c, config in configs_table[configs_table[count_mode] > 0].iterrows():
         # we only need to update the value of the likelihood for the cases
         # where the parameters influence it (i.e., when there are active
@@ -56,7 +53,55 @@ def head_log_likelihood(parameters, head, model, configs_table, sign=1,mode=''):
     return sign*output
 
 
-def log_likelihood(model, configs_tables, sign=1):
+def expected_head_log_likelihood(parameters, head, model, configs_table, sign=1):
+    """Returns the expected-value of the log-likelihood of a head variable
+    given its parents, for all possible configurations the examples of a
+    dataset can take. In other words, it is the function that the M step
+    tries to maximize in the EM cycle. It is implict that the model and the
+    dataset are given, and that the appropriated calculations in
+    self.configs_tables[head] were made.
+    Keyword arguments:
+    parameters -- the parameters for the set of rules which head is head
+    head -- the variable that is head of the rules
+    sign -- sign of the output. Default is 1.0, use -1.0 for
+            minus-log-likelihood
+    """
+    rules = list(model[head]['rules']) # make a copy of rules list
+    for i, rule in enumerate(rules):
+        rules[i]['parameter'] = parameters[i]
+    logging.debug('Calculating head_log_likelihood with parameters: {} ...'.format(parameters))
+    # update column likelihood of configs_table using given parameters.
+    # we only need to consider configurations which count > 0
+    for c, config in configs_table[configs_table['count'] > 0].iterrows():
+        # we only need to update the value of the likelihood for the cases
+        # where the parameters influence it (i.e., when there are active
+        # rules).
+        if config['active_rules'] != '':
+            # convert active_rules string to list
+            active_rules = config['active_rules'].split(',')
+            active_rules = [int(r) for r in active_rules]
+            # calculate likelihood
+            prob = 0
+            for rule_index in active_rules:
+                param = rules[rule_index]['parameter']
+                prob += param - (prob * param)
+            if config[head] == 0:
+                prob = 1 - prob
+            configs_table.loc[c, 'likelihood'] = prob
+            logging.debug('likelihood={}, calculated for configuration line {} head {}.'.format(prob, c, head))
+    # calculate the sum of all log-likelihood * count for table
+    output = 0
+    for c, config in configs_table[configs_table['count'] > 0].iterrows():
+        if config['likelihood'] <= 0:
+            output = float("-inf")
+            logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
+            return sign*output
+        output += config['count'] * math.log(config['likelihood'])
+    logging.debug('log-likelihood={}, calculated for head {}.'.format(sign*output, head))
+    return sign*output
+
+
+def observed_log_likelihood(model, configs_tables, sign=1):
     """Returns the log-likelihood of the whole model.
     """
     ll = 0
@@ -66,8 +111,23 @@ def log_likelihood(model, configs_tables, sign=1):
         params = []
         for rule in rules:
             params.append(rule['parameter'])
-        ll += head_log_likelihood(params, head, model, configs_table,mode='real')
+        ll += observed_head_log_likelihood(params, head, model, configs_table)
     return ll
+
+
+def expected_log_likelihood(model, configs_tables, sign=1):
+    """Returns the log-likelihood of the whole model.
+    """
+    ll = 0
+    for head in model:
+        configs_table = configs_tables[head]
+        rules = model[head]['rules']
+        params = []
+        for rule in rules:
+            params.append(rule['parameter'])
+        ll += expected_head_log_likelihood(params, head, model, configs_table)
+    return ll
+
 
 
 def exact_optimization(head, configs_table):

@@ -116,7 +116,7 @@ class Learner(object):
 
             ### updating the initial ll value in learning info ###
             if old_ll == None:
-                old_ll = calculations.log_likelihood(model, configs_tables)
+                old_ll = calculations.expected_log_likelihood(model, configs_tables)
                 self._update_learning_info(old_ll, begin_em=True)
 
             ### M step ###
@@ -133,7 +133,7 @@ class Learner(object):
                     for rule in rules:
                         initial_guess.append(rule['parameter'])
                     res = minimize(
-                            calculations.head_log_likelihood,
+                            calculations.expected_head_log_likelihood,
                             initial_guess,
                             args = (head, model, configs_table, -1.0),
                             method = 'L-BFGS-B',
@@ -143,7 +143,7 @@ class Learner(object):
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
                 # update log-likelihood
-                ll += calculations.head_log_likelihood(optimal_params, head, model, configs_table,mode='real')
+                ll += calculations.expected_head_log_likelihood(optimal_params, head, model, configs_table)
                 # store new parameters
                 new_params[head] = optimal_params
 
@@ -172,7 +172,7 @@ class Learner(object):
         it'll put this information into a DataFrame accessible by
         self.learn_parameters_info.
         Keyword arguments:
-        log_likelihood -- the expected-value of the log-likelihood of the whole
+        log_likelihood -- the observed-value of the log-likelihood of the whole
                           model given the dataset
         begin_em -- indicates that the EM cycle is beginning
         end_em -- indicates that the EM cycle is ending
