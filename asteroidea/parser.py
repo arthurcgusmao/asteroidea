@@ -108,7 +108,7 @@ def build_configs_tables(model):
             map(list, itertools.product([0, 1], repeat=len(init_columns))))
         df = pd.DataFrame(configs_values, columns=init_columns)
         df.loc[:,'count'] = pd.Series(0, index=df.index)
-        df.loc[:,'real_count'] = pd.Series(0, index=df.index)        
+        df.loc[:,'real_count'] = pd.Series(0, index=df.index)
         df.loc[:,'likelihood'] = pd.Series(np.nan, index=df.index)
         df.loc[:,'active_rules'] = pd.Series(None, index=df.index)
         df.loc[:,'dumb_var'] = pd.Series(None, index=df.index)
@@ -136,6 +136,29 @@ def build_configs_tables(model):
     return configs_tables
 
 
+def check_if_observed(model, head,configs_table, evidences_dict, relational=False,substitution=None):
+    """Check if substitution is observed in dataset"""
+    # TODO: testar tirando a linha de baixo
+    # return None,False
+    parents = model[head]['parents']
+    number_of_atoms = len(parents) + 1
+    columns = configs_table.columns.tolist()
+    config_atoms = columns[0:number_of_atoms]
+    index=0
+    for c,config_atom in enumerate(config_atoms):
+        aux=apply_substitution(config_atom,substitution)
+        if not aux in evidences_dict:
+            value = False
+        else:
+            value = evidences_dict[aux]
+        if value==None:
+            return None,False
+        else:
+            index += 2**(number_of_atoms - (c + 1)) * value
+    return index,True
+
+
+
 def build_problog_model_str(model, configs_tables, probabilistic_data=False,
                             suppress_evidences=False, relational_data=False,
                             relational_dataset_path=None, typed=False,
@@ -156,7 +179,7 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
     queries_str = ''
 
     if relational_data:
-        dataset_str, constants = parse_relational_dataset_to_string(relational_dataset_path, typed=typed)
+        dataset_str, constants, evidences_dict = parse_relational_dataset_to_string(relational_dataset_path, typed=typed)
 
     for head in model:
         # add clauses -- we use a variable named theta_head_index to
@@ -191,25 +214,33 @@ def build_problog_model_str(model, configs_tables, probabilistic_data=False,
         if relational_data:
             # dealing with relational data
             substitutions = generate_substitutions(config_vars, constants)
-            for c, config in configs_table.iterrows():
-                if config['active_rules']!="":
-                    query = config.filter(items=config_vars)
-                    for s, substitution in enumerate(substitutions):
-                        config_dumb_var = configs_table.loc[c,:]['dumb_var'] +'__'+ str(s)
-                        configs_str += config_dumb_var + ':-'
-                        for var, value in query.iteritems():
-                            predicate, arguments = parse_relational_var(var)
-                            var_str = predicate+'('
-                            for argument in arguments:
-                                var_str += substitution[argument] + ','
-                            var_str = var_str[:-1] + ')'
-                            if value == 1:
-                                configs_str += "%s," % var_str
-                            if value == 0:
-                                configs_str += "\+%s," % var_str
-                        configs_str = configs_str[:-1]
-                        configs_str += '.\n'
-                        queries_str += "query(%s).\n" % config_dumb_var
+            for s, substitution in enumerate(substitutions):
+                # check if substitution is observed, if not observed modify problog model for querying
+                config_index,observed=check_if_observed(model, head, configs_table, evidences_dict, relational=True,substitution=substitution)
+                if not observed:
+                    for c, config in configs_table.iterrows():
+                        if config['active_rules']!="":
+                            query = config.filter(items=config_vars)
+                            config_dumb_var = configs_table.loc[c,:]['dumb_var'] +'__'+ str(s)
+                            configs_str += config_dumb_var + ':-'
+                            for var, value in query.iteritems():
+                                predicate, arguments = parse_relational_var(var)
+                                var_str = predicate+'('
+                                for argument in arguments:
+                                    var_str += substitution[argument] + ','
+                                var_str = var_str[:-1] + ')'
+                                if value == 1:
+                                    configs_str += "%s," % var_str
+                                if value == 0:
+                                    configs_str += "\+%s," % var_str
+                            configs_str = configs_str[:-1]
+                            configs_str += '.\n'
+                            queries_str += "query(%s).\n" % config_dumb_var
+                else:
+                    # if the whole substitution for this head is observed,
+                    # then find corresponding configuration and increment real
+                    # count in configuration table
+                    configs_table.loc[config_index, 'real_count'] += 1
         else:
             for c, config in configs_table.iterrows():
                 if config['active_rules']!="":
@@ -346,6 +377,7 @@ def parse_relational_dataset_to_string(filepath, evidences=True, typed=False):
     constants = set()
     temp_file = open(filepath, 'r+')
     dataset_str = ''
+    evidences_dict = {}
     for i, line in enumerate(temp_file):
         dataset_str += line
         # comment syntax
@@ -355,7 +387,20 @@ def parse_relational_dataset_to_string(filepath, evidences=True, typed=False):
         line = line.replace(' ', '').replace('\n', '').replace('.', '')
         # parse line
         if typed:
-            if not 'evidence' in line:
+            if 'evidence' in line:
+                line = line[:-1].replace('evidence(', '')
+                atom, value_str = line.split('),')
+                atom += ')'
+                if value_str == 'true':
+                    value = True
+                elif value_str == 'false':
+                    value = False
+                else:
+                    value = None
+                evidences_dict[atom] = value
+            else:
+                atom = line
+                evidences_dict[atom] = True
                 _, arguments = parse_relational_var(line)
                 constants = constants.union(set(arguments))
         else:
@@ -367,7 +412,7 @@ def parse_relational_dataset_to_string(filepath, evidences=True, typed=False):
                 _, arguments = parse_relational_var(line)
             constants = constants.union(set(arguments))
     temp_file.close()
-    return dataset_str, constants
+    return dataset_str, constants, evidences_dict
 
 
 def pretty_print_model(model):
