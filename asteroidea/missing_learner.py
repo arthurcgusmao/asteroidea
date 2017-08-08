@@ -84,8 +84,7 @@ class Learner(object):
             self.knowledge.update_weights(model)
             # update (probabilistic, total) counts
             if not self.relational_data:
-                for i, row in self.propositional_dataset.iterrows():
-                    self._update_count_propositional(row)
+                self._update_count_propositional()
             else:
                 res = self.knowledge.eval()
                 for head in configs_tables:
@@ -213,44 +212,36 @@ class Learner(object):
             return True
 
 
-    def _update_count_propositional(self,row):
-        configs_tables = self.configs_tables
-        complete = self.check_if_complete(row)
-        if not complete:
-            res = self.knowledge.eval(evidence=row)
-            for head in configs_tables:
-                configs_table = self.configs_tables[head]
-                for c, config in configs_table.iterrows():
-                    if config['dumb_var'] in res:
-                        update_in_count = res[config['dumb_var']]
-                        configs_table.loc[c, 'count'] += update_in_count
-        else:
-
-            # res = self.knowledge.eval(evidence=row)
-            # for head in configs_tables:
-            #     configs_table = self.configs_tables[head]
-            #     for c, config in configs_table.iterrows():
-            #         if config['dumb_var'] in res:
-            #             update_in_count = res[config['dumb_var']]
-            #             configs_table.loc[c, 'count'] += update_in_count
-
-            self.logger.info('Updating count for propositional example...')
-            # get ordered configuration variables for each head
-            config_vars_head = {}
-            for head in configs_tables:
-                number_of_vars = len(self.model[head]['parents']) + 1
-                columns = self.configs_tables[head].columns.tolist()
-                config_vars_head[head] = columns[0:number_of_vars]
-            # count the number of occurences of each configuration for each family
-            for head in configs_tables:
-                config_vars = config_vars_head[head]
-                number_of_vars = len(config_vars)
-                # calculate the index of the configs_table that corresponds to
-                # the configuration of the current example
-                index = 0
-                for v, var in enumerate(config_vars):
-                    value = row[var]
-                    index += 2**(number_of_vars - (v + 1)) * value
-                # updates the count in configs_table
-                self.configs_tables[head].loc[index, 'count'] += 1
-            self.logger.info('Ok')
+    def _update_count_propositional(self):
+        configs_tables=self.configs_tables
+        self.logger.info('Updating count for propositional dataset...')
+        # get ordered configuration variables for each head
+        config_vars_head = {}
+        for head in configs_tables:
+            number_of_vars = len(self.model[head]['parents']) + 1
+            columns = self.configs_tables[head].columns.tolist()
+            config_vars_head[head] = columns[0:number_of_vars]
+        # count the number of occurences of each configuration for each family
+        for i, row in self.propositional_dataset.iterrows():
+            complete = self.check_if_complete(row)
+            if not complete:
+                res = self.knowledge.eval(evidence=row)
+                for head in configs_tables:
+                    configs_table = configs_tables[head]
+                    for c, config in configs_table.iterrows():
+                        if config['dumb_var'] in res:
+                            update_in_count = res[config['dumb_var']]
+                            configs_table.loc[c, 'count'] += update_in_count
+            else:
+                for head in configs_tables:
+                    config_vars = config_vars_head[head]
+                    number_of_vars = len(config_vars)
+                    # calculate the index of the configs_table that corresponds to
+                    # the configuration of the current example
+                    index = 0
+                    for v, var in enumerate(config_vars):
+                        value = row[var]
+                        index += 2**(number_of_vars - (v + 1)) * value
+                    # updates the count in configs_table
+                    self.configs_tables[head].loc[index, 'count'] += 1
+        self.logger.info('Ok')
