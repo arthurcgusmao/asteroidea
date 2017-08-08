@@ -131,6 +131,9 @@ class Learner(object):
 
                 # update log-likelihood
                 ll += calculations.expected_head_log_likelihood(optimal_params, head, model, configs_table)
+                # consistency check --- in case we won't do inference for complete rows in the complete case
+                if ll == float('-inf'):
+                    raise InconsistentEvidenceError()
                 # store new parameters
                 new_params[head] = optimal_params
 
