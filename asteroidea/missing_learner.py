@@ -34,35 +34,22 @@ class Learner(object):
         if not relational_data:
             self._read_propositional_dataset()
 
-        for consistency_test in[True, False]:
-            self.configs_tables = parser.build_configs_tables(self.model)
-            self.problog_model_str=parser.build_problog_model_str(
-                                    self.model, self.configs_tables,
-                                    probabilistic_data=probabilistic_data,
-                                    suppress_evidences=(sampling or relational_data),
-                                    relational_data=relational_data,
-                                    relational_dataset_path=dataset_filepath,
-                                    typed=True,
-                                    consistency_test=consistency_test)
-            self.logger.debug("Problog model string builded:\n{}".format(self.problog_model_str))
-            if sampling:
-                print('not implemented.')
-            else:
-                self.knowledge = Inference(self.problog_model_str,
-                                           probabilistic_data=probabilistic_data,
-                                           relational_data=relational_data)
-                model=self.model
-                self.knowledge.update_weights(model)
-                try:
-                    if not self.relational_data:
-                        for i, row in self.propositional_dataset.iterrows():
-                            res = self.knowledge.eval(evidence=row)
-                    else:
-                        self.knowledge.eval()
-                except:
-                    raise InconsistentEvidenceError("""This error may have occured
-                        because some observation in the dataset is impossible given
-                        the model structure.""")
+        self.configs_tables = parser.build_configs_tables(self.model)
+        self.problog_model_str=parser.build_problog_model_str(
+                                self.model, self.configs_tables,
+                                probabilistic_data=probabilistic_data,
+                                suppress_evidences=(sampling or relational_data),
+                                relational_data=relational_data,
+                                relational_dataset_path=dataset_filepath,
+                                typed=True,
+                                consistency_test=False)
+        self.logger.debug("Problog model string builded:\n{}".format(self.problog_model_str))
+        if sampling:
+            raise NotImplemented
+        else:
+            self.knowledge = Inference(self.problog_model_str,
+                                       probabilistic_data=probabilistic_data,
+                                       relational_data=relational_data)
 
 
     def learn_parameters(self, epsilon=0.01):
