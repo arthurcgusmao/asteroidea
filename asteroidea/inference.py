@@ -53,13 +53,7 @@ class Inference(object):
                     self.custom_weights[x] = rule['parameter']
 
 
-    def eval(self, evidence=pd.Series()):
-        """Returns the query for all configurations of all head variables
-        in the model, given the evidence.
-
-        Keyword arguments:
-        evidence
-        """
+    def update_evidence(self, evidence=pd.Series()):
         model = self.model
         # change evidence (and weights in case evidence is probabilistic)
         evidence_dict = {}
@@ -83,7 +77,14 @@ class Inference(object):
                     # and weights for probabilistic dumb rules
                     self.custom_weights[x_1] = value
                     self.custom_weights[x_0] = 1 - value
+        return evidence_dict
 
+
+    def eval(self, evidence=pd.Series(), p_evidence=False):
+        """Returns the query for all configurations of all head variables
+        in the model, given the evidence.
+        """
+        evidence_dict = self.update_evidence(evidence)
         # make inference
         try:
             if not self.relational_data:
@@ -103,5 +104,47 @@ class Inference(object):
             raise InconsistentEvidenceError("""This error may have occured
                 because some observation in the dataset is impossible given
                 the model structure.""")
-        return output
+        # calculate and return observed log likelihood if p_evidence argument is True
+        if p_evidence:
+            try:
+                if not self.relational_data:
+                    res = self.problog_knowledge_sr.get_evaluator(
+                                evidence=evidence_dict,
+                                keep_evidence=False,
+                                semiring=CustomSemiring(self.custom_weights)).evaluate_evidence(),
+                else:
+                    res = self.problog_knowledge_sr.get_evaluator(
+                                # evidence=evidence_dict,
+                                keep_evidence=True,
+                                semiring=CustomSemiring(self.custom_weights)).evaluate_evidence(),
+                output = {}
+                for key in res[0]:
+                    output[str(key)] = res[0][key]
+            except InconsistentEvidenceError:
+                raise InconsistentEvidenceError("""This error may have occured
+                    because some observation in the dataset is impossible given
+                    the model structure.""")
+            return output, obs_ll
+        else:
+            return output
 
+
+    def p_evidence(self, evidence=pd.Series()):
+        evidence_dict = self.update_evidence(evidence)
+        # make inference
+        try:
+            if not self.relational_data:
+                output = self.problog_knowledge_sr.get_evaluator(
+                            evidence=evidence_dict,
+                            keep_evidence=False,
+                            semiring=CustomSemiring(self.custom_weights)).evaluate_evidence(),
+            else:
+                output = self.problog_knowledge_sr.get_evaluator(
+                            # evidence=evidence_dict,
+                            keep_evidence=True,
+                            semiring=CustomSemiring(self.custom_weights)).evaluate_evidence(),
+        except InconsistentEvidenceError:
+            raise InconsistentEvidenceError("""This error may have occured
+                because some observation in the dataset is impossible given
+                the model structure.""")
+        return output

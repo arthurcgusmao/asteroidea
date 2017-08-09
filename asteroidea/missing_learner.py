@@ -50,6 +50,7 @@ class Learner(object):
             self.knowledge = Inference(self.problog_model_str,
                                        probabilistic_data=probabilistic_data,
                                        relational_data=relational_data)
+            self.knowledge.update_weights(self.model)
 
 
     def learn_parameters(self, epsilon=0.01):
@@ -65,11 +66,17 @@ class Learner(object):
         model = self.model
         configs_tables = self.configs_tables
 
+        ### updating the initial ll value in learning info ###
+        # update weights
+        self.knowledge.update_weights(model)
+        # calculate observed log likelihood
+        old_obs_ll = self._calculate_log_likelihood()
+        self._update_learning_info(old_obs_ll, begin_em=True)
+
         # begin EM cycle
-        old_ll = None
         step = 0
         while True:
-            ll = 0
+            expec_ll = 0
             new_params = {}
 
             ### E step ###
@@ -80,8 +87,6 @@ class Learner(object):
                 configs_table = configs_tables[head]
                 for c, config in configs_table.iterrows():
                     configs_table.loc[c, 'count'] = configs_table.loc[c, 'real_count']
-            # update weights
-            self.knowledge.update_weights(model)
             # update (probabilistic, total) counts
             if not self.relational_data:
                 for i, row in self.propositional_dataset.iterrows():
@@ -94,11 +99,6 @@ class Learner(object):
                         prob = res[query]
                         dumb_var = query.split('__')[0]
                         configs_table.loc[configs_table['dumb_var'] == dumb_var, 'count'] += prob
-
-            ### updating the initial ll value in learning info ###
-            if old_ll == None:
-                old_ll = calculations.expected_log_likelihood(model, configs_tables)
-                self._update_learning_info(old_ll, begin_em=True)
 
             ### M step ###
             self.logger.info("Starting M step #{}".format(step))
@@ -124,10 +124,12 @@ class Learner(object):
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
                 # update log-likelihood
-                ll += calculations.expected_head_log_likelihood(optimal_params, head, model, configs_table)
+                # expec_ll += calculations.expected_head_log_likelihood(optimal_params, head, model, configs_table)
+
                 # consistency check --- in case we won't do inference for complete rows in the complete case
-                if ll == float('-inf'):
-                    raise InconsistentEvidenceError()
+                # if expec_ll == float('-inf'):
+                #     raise InconsistentEvidenceError()
+
                 # store new parameters
                 new_params[head] = optimal_params
 
@@ -137,16 +139,33 @@ class Learner(object):
                 rules = model[head]['rules']
                 for i, rule in enumerate(rules):
                     rules[i]['parameter'] = new_params[head][i]
+
+            # update weights
+            self.knowledge.update_weights(model)
+            # calculate observed log likelihood
+            obs_ll = self._calculate_log_likelihood()
             # EM cycle stopping criteria
-            self.logger.info("Log-likelihood for step #{} step of EM: {}".format(step, ll))
-            if (ll - old_ll) < epsilon and (ll - old_ll) >= 0:
-                learning_info = self._update_learning_info(ll, end_em=True)
+            self.logger.info("Log-likelihood for step #{} step of EM: {}".format(step, obs_ll))
+            if (obs_ll - old_obs_ll) < epsilon and (obs_ll - old_obs_ll) >= 0:
+                learning_info = self._update_learning_info(obs_ll, end_em=True)
                 break
-            old_ll = ll
+            old_obs_ll = obs_ll
             step += 1
             # update data about iterations
-            self._update_learning_info(ll)
+            self._update_learning_info(obs_ll)
         return learning_info
+
+
+    def _calculate_log_likelihood(self):
+        """Calculates the observed log likelihood for the current model.
+        """
+        if self.relational_data:
+            obs_ll = math.log(self.knowledge.p_evidence()[0])
+        else:
+            obs_ll = 0
+            for i, row in self.propositional_dataset.iterrows():
+                obs_ll += math.log(self.knowledge.p_evidence(evidence=row))
+        return obs_ll
 
 
     def _update_learning_info(self, log_likelihood,
