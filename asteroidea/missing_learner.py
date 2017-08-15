@@ -118,7 +118,7 @@ class Learner(object):
                             args = (head, model, configs_table, -1.0),
                             method = 'L-BFGS-B',
                             bounds = [(0.000001, 0.999999)]*len(initial_guess),
-                            options = {'disp': True ,'eps' : 1e-7})
+                            options = {'disp': False ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
