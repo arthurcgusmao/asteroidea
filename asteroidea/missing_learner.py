@@ -16,6 +16,7 @@ class Learner(object):
 
     def __init__(self, structure_filepath, dataset_filepath=None,
                  probabilistic_data=False, sampling=False, relational_data=False):
+        self._start_time = time.time()
         self.info = {'df': None,
                      'time_log': {},
                      'no_exact_solution': set()}
@@ -180,7 +181,7 @@ class Learner(object):
         end_em -- indicates that the EM cycle is ending
         """
         if begin_em:
-            self._start_time = time.time()
+            # self._start_time = time.time()
             self._learning_data = []
         iter_data = []
         for head in self.model:

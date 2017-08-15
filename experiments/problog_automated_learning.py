@@ -241,7 +241,7 @@ def run():
 
 
     problog_structure = read_structure_from_file(structure_filepath)
-    min_improv = 0.001
+    min_improv = 0.0001
 
     for problog_dataset_filepath in dataset_filepaths:
         dataset_filename = problog_dataset_filepath.split('/')[-1]
