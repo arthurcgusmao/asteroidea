@@ -1,5 +1,6 @@
-"""This file builds the datasets from a structure file. Default datasets and initial structure for
-learning will be created, for both ProbLog and Asteroidea.
+"""This file builds the datasets from a structure file, that should be named
+`original_structure.pl`. Default datasets and initial structure for learning will be created, for
+both ProbLog and Asteroidea.
 """
 import os
 import sys

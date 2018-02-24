@@ -64,6 +64,7 @@ def find_dataset_and_structure_files(dataset_prefix="dataset_"):
     return structure_filepath, dataset_filepaths, relational_data
 
 
+# delete tis function later
 def get_dataset(dataset_filepath, relational_data):
     if relational_data:
         dataset = dataset_filepath
@@ -112,7 +113,7 @@ def run():
     for dataset_filepath in dataset_filepaths:
         dataset_filename = dataset_filepath.split('/')[-1]
         logging.info("Learning for dataset '{}'...".format(dataset_filename))
-        dataset = get_dataset(dataset_filepath, relational_data)
+        # dataset = get_dataset(dataset_filepath, relational_data)
 
         start_time = time.time()
 
@@ -120,8 +121,8 @@ def run():
         # ll, model = learner.learn_parameters(dataset)
         learner = Learner(structure_filepath,
                   dataset_filepath=dataset_filepath,
-                  relational_data=True)
-        learning_info=learner.learn_parameters(epsilon=0.0000001)
+                  relational_data=relational_data)
+        learning_info=learner.learn_parameters(epsilon=0.001)
         print (learning_info)
         ll=float(learning_info['df'].iloc[-1:]['Log-Likelihood'])
         model=learner.model

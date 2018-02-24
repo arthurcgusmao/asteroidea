@@ -14,7 +14,7 @@ import logging
 
 class Learner(object):
 
-    def __init__(self, structure_filepath, dataset_filepath=None,
+    def __init__(self, structure_filepath, dataset_filepath,
                  probabilistic_data=False, sampling=False, relational_data=False):
         self._start_time = time.time()
         self.info = {'df': None,
@@ -24,11 +24,6 @@ class Learner(object):
         self.logger = logging.getLogger('asteroidea')
         self.dataset_filepath = dataset_filepath
         self.relational_data = relational_data
-
-        if relational_data:
-            if dataset_filepath == None:
-                raise ValueError("""When learning a relational dataset you
-                                 should pass `dataset_filepath` argument.""")
 
         self.model = parser.read_structure(structure_filepath, relational_data=relational_data)
 
@@ -164,7 +159,7 @@ class Learner(object):
         else:
             obs_ll = 0
             for i, row in self.propositional_dataset.iterrows():
-                obs_ll += math.log(self.knowledge.p_evidence(evidence=row))
+                obs_ll += math.log(self.knowledge.p_evidence(evidence=row)[0])
         return obs_ll
 
 

@@ -42,7 +42,8 @@ def generate_dataset(model, size, missing_rate):
         # transform values greater than 1 to percentage
         if missing_rate >= 1:
             missing_rate = float(missing_rate) / 100.
-        output = output.applymap(lambda x: x if random() > missing_rate else '?')
+        # missing values are represented as NaN
+        output = output.applymap(lambda x: x if random() > missing_rate else float('NaN'))
     return output
 
 
