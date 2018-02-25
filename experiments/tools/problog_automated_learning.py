@@ -252,8 +252,9 @@ def run():
     # results_filename += str(int(time.time())) + '.csv'
     # experiment_dir_name = experiment_dir.split('/')[-2]
     experiment_dir_name = os.path.basename(experiment_dir)
-    results_filepath = './results/{}/problog/problog___{}___{}.csv'.format(
-        experiment_dir_name, experiment_dir_name, int(time.time()))
+    time_ = int(time.time())
+    results_filepath = './results/{}/problog/{}/problog___{}___{}.csv'.format(
+        experiment_dir_name, time_, experiment_dir_name, time_)
 
 
     problog_structure = read_structure_from_file(structure_filepath)

@@ -34,7 +34,7 @@ def find_dataset_and_structure_files(dataset_prefix="dataset_"):
     # read dataset files
     for f in files:
         if dataset_prefix in f:
-            if '_problog.pl' in f:
+            if 'problog_' in f:
                 continue
             dataset_files.append(f)
             f_type = f.split('.')[-1]
@@ -65,10 +65,10 @@ def find_dataset_and_structure_files(dataset_prefix="dataset_"):
     return structure_filepath, dataset_filepaths, relational_data
 
 
-def save_results(df, dataset_name):
+def save_results(df, dataset_name, time_):
     experiment_dir_name = os.path.basename(experiment_dir)
-    results_filepath = './results/{}/asteroidea/asteroidea___{}___{}___{}.csv'.format(
-        experiment_dir_name, experiment_dir_name, dataset_name, int(time.time()))
+    results_filepath = './results/{}/asteroidea/{}/asteroidea___{}___{}___{}.csv'.format(
+        experiment_dir_name, time_, experiment_dir_name, dataset_name, time_)
     dirname = os.path.dirname(results_filepath)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
@@ -82,6 +82,7 @@ def run():
     results = {'filename': [],
                'time': [],
                'log-likelihood': []}
+    exp_time_ = int(time.time())
     for dataset_filepath in dataset_filepaths:
         dataset_filename = dataset_filepath.split('/')[-1]
         logging.info("Learning for dataset '{}'...".format(dataset_filename))
@@ -100,6 +101,6 @@ def run():
         learning_time = end_time - start_time
 
         logging.info("Learned:\nDATASET '{}'\nTime: {}\nLog-Likelihood: {}\nModel: {}".format(dataset_filename, learning_time, ll, model))
-        save_results(learner.info['df'], dataset_filename)
+        save_results(learner.info['df'], dataset_filename, exp_time_)
     return results
 run()
