@@ -160,7 +160,6 @@ def create_asteroidea_structure():
             lines.append(line)
     structure_text = ''.join(lines)
 
-    structure_filepath = "{}/{}".format(experiment_path, asteroidea_structure_filename)
     f = open(asteroidea_structure_path, 'w+')
     f.write(structure_text)
     f.close()
