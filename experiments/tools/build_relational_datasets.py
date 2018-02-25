@@ -10,23 +10,13 @@ from problog.tasks import sample
 from problog.program import PrologString
 
 
-# globals
-_, experiment_path  = sys.argv
-original_structure_filename = 'original_structure.pl'
-asteroidea_structure_filename = 'structure.pl'
-
-# remove last "/" in experiment path if present
-if experiment_path[-1] == '/':
-    experiment_path = experiment_path[:-1]
-original_structure_path = "{}/{}".format(experiment_path, original_structure_filename)
-asteroidea_structure_path = "{}/{}".format(experiment_path, asteroidea_structure_filename)
-
-f = open(original_structure_path, 'r')
-original_structure_text = f.read()
-f.close()
 
 
-def create_problog_structure_and_dataset(dataset_filename,
+
+def create_problog_structure_and_dataset(experiment_path,
+                                         asteroidea_structure_filename,
+                                         asteroidea_structure_path,
+                                         dataset_filename,
                                          problog_prefix='problog'):
     dataset_filepath = "{}/{}".format(experiment_path, dataset_filename)
 
@@ -97,7 +87,7 @@ def create_problog_structure_and_dataset(dataset_filename,
     return
 
 
-def create_dataset_file(number_of_houses, missing_rate):
+def create_dataset_file(experiment_path, original_structure_text, number_of_houses, missing_rate):
     """Some hardcoded things here. This function supposes that the original_structure is from the
     fire/burglary/alarm example.
     """
@@ -122,7 +112,7 @@ def create_dataset_file(number_of_houses, missing_rate):
 
     output += missing_sample(modeltext, missing_rate)
     # saving output to file
-    filename = "dataset_{:03d}p_{:03d}m.pl".format(number_of_houses, missing_rate)
+    filename = "dataset_{:03d}size_{:03d}missing.pl".format(number_of_houses, missing_rate)
     filepath = "{}/{}".format(experiment_path, filename)
     f = open(filepath, 'w+')
     f.write(output)
@@ -150,7 +140,7 @@ def missing_sample(modeltext, missing_rate):
     return output
 
 
-def create_asteroidea_structure():
+def create_asteroidea_structure(original_structure_text, asteroidea_structure_path):
     lines = []
     for line in original_structure_text.split('\n'):
         if '::' in line:
@@ -166,26 +156,35 @@ def create_asteroidea_structure():
     return
 
 
-def create_all_datasets(houses_range, missing_range):
+def create_relational_datasets(experiment_path, size_range, missing_range):
+    original_structure_filename = 'original_structure.pl'
+    asteroidea_structure_filename = 'structure.pl'
+
+    # remove last "/" in experiment path if present
+    if experiment_path[-1] == '/':
+        experiment_path = experiment_path[:-1]
+    original_structure_path = "{}/{}".format(experiment_path, original_structure_filename)
+    asteroidea_structure_path = "{}/{}".format(experiment_path, asteroidea_structure_filename)
+
+    f = open(original_structure_path, 'r')
+    original_structure_text = f.read()
+    f.close()
+
     # create asteroidea structure
-    create_asteroidea_structure()
+    create_asteroidea_structure(original_structure_text, asteroidea_structure_path)
 
     # create all asteroidea datasets
-    for h in houses_range:
+    for h in size_range:
         for m in missing_range:
-            create_dataset_file(h, m)
+            create_dataset_file(experiment_path, original_structure_text, h, m)
 
     # create all problog datasets and structure
     files = os.listdir(experiment_path)
     for file_name in files:
         if 'dataset' in file_name:
-            print(file_name)
             if not 'problog' in file_name:
-                create_problog_structure_and_dataset(file_name)
+                create_problog_structure_and_dataset(experiment_path, asteroidea_structure_filename, asteroidea_structure_path, file_name)
 
 
-
-houses_range = [5, 10, 15, 20, 25, 30]
-missing_range = [0, 1, 2, 5, 10, 20, 30]
-
-create_all_datasets(houses_range, missing_range)
+# size_range = [5, 10, 15, 20, 25, 30]
+# missing_range = [0, 1, 2, 5, 10, 20, 30]

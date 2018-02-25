@@ -76,9 +76,9 @@ def create_propositional_datasets(experiment_path, size_range, missing_range):
 
     for n in size_range:
         for m in missing_range:
+            filename = '{}/dataset_{:03d}size_{:03d}missing.csv'.format(experiment_path, n, m)
             df = generate_dataset(model, n, m)
-            df.to_csv('{}/dataset_{:03d}size_{:03d}missing.csv'.format(experiment_path, n, m),
-                      index=False)
+            df.to_csv(filename, index=False)
 
 # size_range = [5, 10, 15, 20, 25, 30]
 # missing_range = [0, 1, 2, 5, 10, 20, 30]

@@ -5,12 +5,13 @@
 import os
 import tarfile
 from tools.build_propositional_datasets import create_propositional_datasets
-# from build_relational_datasets import create_relational_datasets
+from tools.build_relational_datasets import create_relational_datasets
 
 
 # We are going to create 8 instances of each dataset. In order to do that, we'll copy the original folders to 8 different instances and run the function for each one. This ensures that the datasets will be different, due to the pseudo randomicity of the sample function.
 
 def create_all_dataset_instances(dataset_name, relational, size_range, missing_range):
+    print('Creating {} datasets...'.format(dataset_name))
     dataset_paths = []
     for i in range(1, 9):
         path = "./datasets/{}_{:02d}".format(dataset_name, i)
@@ -24,10 +25,12 @@ def create_all_dataset_instances(dataset_name, relational, size_range, missing_r
     tarf.close()
 
     for path in dataset_paths:
+        print(os.path.abspath(path))
         if not relational:
             create_propositional_datasets(path, size_range, missing_range)
         else:
             create_relational_datasets(path, size_range, missing_range)
+    print('Done.')
 
 
 # PROPOSITIONAL DATASETS
