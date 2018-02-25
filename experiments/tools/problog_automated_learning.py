@@ -22,8 +22,14 @@ from problog.learning import lfi
 # from problog_parse_structure_wo_file import read_structure_not_file
 from asteroidea.parser import *
 
+# make sure this script is being run at root of experiments/
+if not os.path.basename(os.getcwd()) == 'experiments':
+    sys.exit("This script should be run from 'experiments/', please cd there.")
 
 # configure logging
+logs_dir = './logs'
+if not os.path.exists(logs_dir):
+    os.makedirs(logs_dir)
 logging.basicConfig(filename=('./logs/problog_autolearn_{}.log'.format(int(time.time()))),
                     format='%(asctime)s | %(levelname)s : %(message)s',
                     level=logging.INFO)
