@@ -252,7 +252,7 @@ def run():
     # results_filename += str(int(time.time())) + '.csv'
     # experiment_dir_name = experiment_dir.split('/')[-2]
     experiment_dir_name = os.path.basename(experiment_dir)
-    results_filepath = './results/{}/problog/problog__{}__{}.csv'.format(
+    results_filepath = './results/{}/problog/problog___{}___{}.csv'.format(
         experiment_dir_name, experiment_dir_name, int(time.time()))
 
 

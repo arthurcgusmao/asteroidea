@@ -67,12 +67,13 @@ def find_dataset_and_structure_files(dataset_prefix="dataset_"):
 
 def save_results(df, dataset_name):
     experiment_dir_name = os.path.basename(experiment_dir)
-    results_folder = './results/{}/asteroidea/asteroidea__{}__{}'.format(
-        experiment_dir_name, experiment_dir_name, int(time.time()))
-    if not os.path.exists(results_folder):
-        os.makedirs(results_folder)
-    dataset_name = dataset_name.split('.')[0] + '.csv'
-    df.to_csv(results_folder + dataset_name)
+    results_filepath = './results/{}/asteroidea/asteroidea___{}___{}___{}.csv'.format(
+        experiment_dir_name, experiment_dir_name, dataset_name, int(time.time()))
+    dirname = os.path.dirname(results_filepath)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    # save file
+    df.to_csv(results_filepath)
 
 
 def run():
