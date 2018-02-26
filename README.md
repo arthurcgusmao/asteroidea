@@ -4,7 +4,16 @@
 Asteroidea is a parameter learning algorithm for probabilistic logic programs.
 
 
-## Running the experiments
+## Setting up a working environment
+
+At the root of this project there is an `environment.yml` file that contains information about the [conda](http://conda.io) environment that was used to run this program. Use the command below to create this environment using conda:
+
+```bash
+conda env create -f environment.yml
+```
+
+
+## Running experiments
 
 
 ### 1) Generate new datasets
