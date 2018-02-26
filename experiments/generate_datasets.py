@@ -35,17 +35,22 @@ def create_all_dataset_instances(dataset_name, relational, size_range, missing_r
 
 # PROPOSITIONAL DATASETS
 
+size_range = []
+for i in range(5,105,5):
+    size_range.append(i)
+for i in range(200,1100,100):
+    size_range.append(i)
+
 create_all_dataset_instances(
     dataset_name='ship_energy_plant',
     relational=False,
-    size_range=[2,4],
-    missing_range=[0, 10])
-
+    size_range=size_range,
+    missing_range=[0, 10, 20, 30, 40])
 
 # RELATIONAL DATASETS
 
 create_all_dataset_instances(
     dataset_name='alarm',
     relational=True,
-    size_range=[1,2],
-    missing_range=[0, 10])
+    size_range=range(5,55,5),
+    missing_range=[0, 10, 20, 30, 40])
