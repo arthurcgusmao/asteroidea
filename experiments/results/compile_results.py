@@ -63,9 +63,15 @@ def compile_results_for_each_dset_instance():
                 row_fname = row_fname.replace('problog_', '')
 
                 # get the respective asteroidea dataframe
-                ast_df = pd.read_csv(ast_dfs_dict[row_fname])
-                # find time in dataframe when asteroidea reached a better LL value
-                ast_time = time_when_asteroidea_achieves_ll(ast_df, row_ll)
+                if row_fname in ast_dfs_dict:
+                    if os.path.isfile(ast_dfs_dict[row_fname]):
+                        ast_df = pd.read_csv(ast_dfs_dict[row_fname])
+                        # find time in dataframe when asteroidea reached a better LL value
+                        ast_time = time_when_asteroidea_achieves_ll(ast_df, row_ll)
+                    else:
+                        ast_time = np.nan
+                else:
+                    ast_time = np.nan
 
                 # insert both problog time and asteroidea time into a new array
                 results.append({'filename': row_fname, 'asteroidea': ast_time, 'problog': prob_time})
