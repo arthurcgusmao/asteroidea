@@ -16,6 +16,11 @@ def time_when_asteroidea_achieves_ll(df, ll):
         return np.nan
 
 
+def get_dset_instance_number(results_fname, dset_name):
+    pattern = r'(?<=___{}_).*?(?=\.)'.format(dset_name)
+    return re.search(pattern, results_fname).group()
+
+
 def compile_results_for_each_dset_instance():
     # get a list of all dirs
     dirs = [x for x in os.listdir('./') if os.path.isdir(x)]
@@ -70,13 +75,29 @@ def compile_results_for_each_dset_instance():
             pd.DataFrame(results).to_csv(results_fname)
 
 
-def compile_final_results():
+def compile_final_results(dataset_names):
     # get a list of all dirs
     dirs = [x for x in os.listdir('./') if os.path.isdir(x)]
     # for each instance of the datasets (dir_), compile the thing
     # dir_ is the instance folder name, for example: alarm_02
-    for dir_ in dirs:
-        results_fname = os.path.join(dir_, 'problog_vs_asteroidea___{}.csv'.format(dir_))
-        if os.path.isfile(results_fname):
+    for dset_name in dataset_names:
+        dset_final_results = {}
+        for dir_ in dirs:
+            if dset_name in dir_:
+                results_fname = os.path.join(dir_, 'problog_vs_asteroidea___{}.csv'.format(dir_))
+                if os.path.isfile(results_fname):
+                    dset_instance = get_dset_instance_number(results_fname, dset_name)
+                    df = pd.read_csv(results_fname)
+                    for index,row in df.iterrows():
+                        row_fname = row['filename']
+                        row_ast = row['asteroidea']
+                        row_prob = row['problog']
+                        if not row_fname in dset_final_results:
+                            dset_final_results[row_fname] = {}
+                        dset_final_results[row_fname]['asteroidea_{}'.format(dset_instance)] = row_ast
+                        dset_final_results[row_fname]['problog_{}'.format(dset_instance)] = row_prob
+                        dset_final_results[row_fname]['filename'] = row_fname
+        pd.DataFrame(dset_final_results).to_csv('{}_final_results.csv'.format(dset_name))
 
-            # todo
+compile_results_for_each_dset_instance()
+compile_final_results(['alarm', 'ship_energy_plant'])
