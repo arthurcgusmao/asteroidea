@@ -3,6 +3,6 @@ __pycache__
 
 # ignore all subdirectories of ./experiments/datasets/
 experiments/datasets/*/*
-experiments/results
+experiments/results/*/*
 experiments/logs
 experiments/_archive
