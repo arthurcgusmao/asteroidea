@@ -11,9 +11,14 @@ if not os.path.basename(os.getcwd()) == 'results':
 def time_when_asteroidea_achieves_ll(df, ll):
     indexes = df.index[df['Log-Likelihood'] >= ll].tolist()
     if len(indexes) > 0:
-        return df.iloc[min(indexes)]['Elapsed Time']
+        return df.iloc[min(indexes)]['Elapsed Time'], df.iloc[min(indexes)]['Log-Likelihood']
     else:
-        return np.nan
+        return np.nan, np.nan
+
+
+def get_asteroidea_best_ll(df):
+    last_row_index = max(df.index.tolist())
+    return df.iloc[last_row_index]['Elapsed Time'], df.iloc[last_row_index]['Log-Likelihood']
 
 
 def get_dset_instance_number(results_fname, dset_name):
@@ -67,14 +72,17 @@ def compile_results_for_each_dset_instance():
                     if os.path.isfile(ast_dfs_dict[row_fname]):
                         ast_df = pd.read_csv(ast_dfs_dict[row_fname])
                         # find time in dataframe when asteroidea reached a better LL value
-                        ast_time = time_when_asteroidea_achieves_ll(ast_df, row_ll)
+                        ast_time, ast_ll = time_when_asteroidea_achieves_ll(ast_df, row_ll)
+                        best_ast_ll_time, best_ast_ll = get_asteroidea_best_ll(ast_df)
                     else:
                         ast_time = np.nan
                 else:
                     ast_time = np.nan
 
                 # insert both problog time and asteroidea time into a new array
-                results.append({'filename': row_fname, 'asteroidea': ast_time, 'problog': prob_time})
+                results.append({'filename': row_fname, 'asteroidea_time': ast_time, 'problog_time': prob_time,
+                                'asteroidea_ll': ast_ll, 'problog_ll': row_ll,
+                                'asteroidea_best_ll': best_ast_ll, 'asteroidea_best_ll_time': best_ast_ll_time})
 
             # finally, save results to a .csv file
             results_fname = os.path.join(dir_, 'problog_vs_asteroidea___{}.csv'.format(dir_))
@@ -96,8 +104,12 @@ def compile_final_results(dataset_names):
                     df = pd.read_csv(results_fname)
                     for index,row in df.iterrows():
                         row_fname = row['filename']
-                        row_ast = row['asteroidea']
-                        row_prob = row['problog']
+                        row_ast = row['asteroidea_time']
+                        row_prob = row['problog_time']
+                        row_ast_ll = row['asteroidea_ll']
+                        row_prob_ll = row['problog_ll']
+                        row_best_ast_ll = row['asteroidea_best_ll']
+                        row_best_ast_ll_time = row['asteroidea_best_ll_time']
                         if not row_fname in dset_final_results:
                             dset_final_results[row_fname] = {}
                         dset_final_results[row_fname]['asteroidea_{}'.format(dset_instance)] = row_ast
