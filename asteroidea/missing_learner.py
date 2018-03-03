@@ -116,6 +116,7 @@ class Learner(object):
                             bounds = [(0.000001, 0.999999)]*len(initial_guess),
                             options = {'disp': False ,'eps' : 1e-7})
                     optimal_params = res.x.tolist()
+                    list(map(lambda x: 0 if x<=0.000001 else 1 if x>=0.999999 else x, optimal_params))
                 self.logger.debug("Optimal params for head {}: {}".format(head, optimal_params))
 
                 # update log-likelihood
