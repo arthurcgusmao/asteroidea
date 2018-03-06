@@ -38,11 +38,11 @@ Next, you can perform the experiments by running any of the `run_*` shell script
 
 ### Reproducing the original experiments
 
-Notice: when following the steps outlined above, please keep in mind that the results may differ from the ones published on the paper because by executing the steps above we are **generating new datasets**. We have, however, uploaded the files that were used in the original experiment into `experiments/datasets/original_datasets.tar.gz`. If you want to run the tests with them, simply extract the compressed tarball file:
+Notice: when following the steps outlined above, please keep in mind that the results may differ from the ones published on the paper because by executing the steps above we are **generating new datasets**. We have, however, uploaded the files that were used in the original experiments: `experiments/datasets/experiments_ijar_alarm.tar.gz`. If you want to run the tests with them, simply extract the compressed tarball file:
 
 ```bash
 cd experiments/datasets
-tar -zxvf original_datasets.tar.gz
+tar -zxvf experiments_ijar_alarm.tar.gz
 ```
 
-Next, jump right into step 2 described above.
+Next, jump right into step 2 described above. Now the results likely will be more consistent. However, as there are still fonts of randomicity (such as the minimization algorithm employed by Asteroidea), the results should still not be exactly the same.
