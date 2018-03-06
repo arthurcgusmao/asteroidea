@@ -12,6 +12,12 @@ At the root of this project there is an `environment.yml` file that contains inf
 conda env create -f environment.yml
 ```
 
+Finally, install ProbLog in this environment:
+
+```bash
+source activate problog # (the name of the environment is problog)
+pip install problog
+```
 
 ## Running experiments
 
