@@ -1,7 +1,7 @@
 
 # Asteroidea
 
-Asteroidea is a parameter learning algorithm for probabilistic logic programs.
+Asteroidea is a parameter learning algorithm for probabilistic logic programs licensed under [The GNU General Public License v3.0](LICENSE).
 
 
 ## Setting up a working environment
