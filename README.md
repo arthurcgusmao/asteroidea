@@ -91,7 +91,7 @@ learning_info = learner.learn_parameters(epsilon=0.001)
 
 After the learning function ends it returns a dictionary that contains information about which rules were not exact solutions (`learning_info['no_exact_solution']`) (i.e., which rules could not be calculated in closed-form in each iteration), a time log (`learning_info['time_log']`) that categorizes the time consumption into different categories, and a pandas dataframe (`learning_info['df']`) that contains all iterations, the parameter values reach at each iteration, and the respective log-likelihood.
 
-Please check the [`missing_learning.py`](asteroidea/missing_learning.py), [`asteroidea_automated_learning.py`](experiments/tools/asteroidea_automated_learning.py), and [`run_asteroidea_alarm.sh`](experiments/run_asteroidea_alarm.sh) files contained in this repository to see the implementation and examples on how to automate the learning process.
+Please check the [`missing_learner.py`](asteroidea/missing_learner.py), [`asteroidea_automated_learning.py`](experiments/tools/asteroidea_automated_learning.py), and [`run_asteroidea_alarm.sh`](experiments/run_asteroidea_alarm.sh) files contained in this repository to see the implementation and examples on how to automate the learning process.
 
 
 ### Examples of structure file
