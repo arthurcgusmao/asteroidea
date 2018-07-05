@@ -76,8 +76,14 @@ def compile_results_for_each_dset_instance():
                         best_ast_ll_time, best_ast_ll = get_asteroidea_best_ll(ast_df)
                     else:
                         ast_time = np.nan
+                        ast_ll = np.nan
+                        best_ast_ll_time = np.nan
+                        best_ast_ll = np.nan
                 else:
                     ast_time = np.nan
+                    ast_ll = np.nan
+                    best_ast_ll_time = np.nan
+                    best_ast_ll = np.nan
 
                 # insert both problog time and asteroidea time into a new array
                 results.append({'filename': row_fname, 'asteroidea_time': ast_time, 'problog_time': prob_time,
